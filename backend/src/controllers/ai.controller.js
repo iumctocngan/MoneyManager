@@ -1,18 +1,7 @@
-import express from 'express';
-import multer from 'multer';
 import fs from 'fs';
-import os from 'os';
 import { aiService } from '../services/aiService.js';
 
-const router = express.Router();
-
-// Setup multer to store files in the OS temp directory
-const upload = multer({ 
-  dest: os.tmpdir(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
-});
-
-router.post('/transcribe', upload.single('audio'), async (req, res) => {
+export const transcribe = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No audio file provided' });
@@ -34,6 +23,4 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
     console.error('Transcription error:', error);
     res.status(500).json({ message: error.message || 'Error processing audio' });
   }
-});
-
-export default router;
+};

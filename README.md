@@ -1,47 +1,47 @@
 # Money Manager App
 
-Dưới đây là hướng dẫn cài đặt và chạy dự án sau khi bạn tải (pull) từ GitHub về.
+Ứng dụng quản lý tài chính cá nhân toàn diện với Frontend (Expo/React Native) và Backend (Node.js/Express).
 
-## 1. Cài đặt thư viện (Dependencies)
-Vì thư mục `node_modules` không được đẩy lên GitHub để giảm dung lượng, bạn cần cài đặt lại chúng:
+## 1. Cấu trúc dự án
+- `frontend/`: Ứng dụng mobile (Expo 54, React Native 0.81)
+- `backend/`: Server API (Node.js, Express & MySQL)
 
-### Frontend (Expo App):
-Mở terminal tại thư mục gốc của dự án (`e:\MyAwesomeApp`) và chạy:
+## 2. Cài đặt nhanh (Quick Setup)
+
+Chỉ cần chạy lệnh sau tại thư mục gốc để cài đặt toàn bộ môi trường:
 ```bash
-npm install
+npm run install:all
 ```
 
-### Backend:
-Di chuyển vào thư mục `backend` và cài đặt:
+## 3. Cấu hình Cơ sở dữ liệu
+1. Truy cập `backend/sql/schema.sql`.
+2. Thực thi nội dung file này trong MySQL của bạn để tạo database và các bảng.
+
+## 4. Cấu hình biến môi trường (.env)
+1. Trong thư mục `backend/`, copy file `.env.example` thành `.env`.
+2. Cập nhật thông tin kết nối Database (`DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`).
+3. (Tùy chọn) Gán `GEMINI_API_KEY` nếu dùng AI.
+
+## 5. Chạy dự án (Từ thư mục gốc)
+
+### Chạy Backend (API):
 ```bash
-cd backend
-npm install
+npm run backend:dev
 ```
 
-## 2. Cấu hình Cơ sở dữ liệu
-1. Vào thư mục `backend/sql/schema.sql`.
-2. Copy nội dung file này và chạy trong công cụ quản lý MySQL của bạn để tạo database và bảng.
-
-## 3. Cấu hình biến môi trường (.env)
-1. Trong thư mục `backend`, copy file `.env.example` thành `.env`.
-2. Chỉnh sửa thông tin kết nối Database cho đúng với máy của bạn.
-3. Tạo API Key tại [Google AI Studio](https://aistudio.google.com/) và gán vào:
-   `GEMINI_API_KEY=your_api_key_here`
-
-## 4. Chạy dự án
-
-### Chạy Backend:
+### Chạy Frontend (Expo Mobile):
 ```bash
-cd backend
-npm run dev
+npm run frontend:start
 ```
+*Sau đó quét mã QR bằng ứng dụng **Expo Go** (Android) hoặc **Camera** (iOS).*
 
-### Chạy Frontend (Expo):
-Mở một terminal mới (tại thư mục gốc) và chạy:
-```bash
-npx expo start
-```
-Sau đó quét mã QR bằng ứng dụng Expo Go trên điện thoại.
+## 6. Lệnh kiểm tra và bảo trì
+
+Bạn có thể kiểm tra lỗi code (lint) và kiểu dữ liệu (typescript) từ thư mục gốc:
+
+- **Kiểm tra tất cả**: `npm run lint:all`
+- **Kiểm tra Frontend**: `npm run frontend:check`
+- **Kiểm tra Backend**: `npm run backend:check`
 
 ---
-*Nếu gặp lỗi không chạy được, hãy hỏi AI để được hỗ trợ!*
+*Để biết thêm chi tiết về quy trình phát triển, vui lòng xem file `AGENTS.md`.*

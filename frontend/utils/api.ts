@@ -219,7 +219,7 @@ export const api = {
         try {
           const errorJson = JSON.parse(response.body);
           msg = errorJson.message || errorJson.error?.message || msg;
-        } catch (e) {}
+        } catch {}
         throw new ApiError(msg, response.status);
       }
 
