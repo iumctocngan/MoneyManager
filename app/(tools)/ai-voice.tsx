@@ -65,7 +65,7 @@ export default function AiVoiceScreen() {
     } else {
       pulseAnim.setValue(1);
     }
-  }, [isRecording]);
+  }, [isRecording, pulseAnim]);
 
   useEffect(() => {
     // Cleanup recorder and audio mode on unmount
@@ -76,11 +76,11 @@ export default function AiVoiceScreen() {
             await recorder.stop();
           }
           await setAudioModeAsync({ allowsRecording: false });
-        } catch (e) {}
+        } catch {}
       };
       void cleanup();
     };
-  }, []);
+  }, [recorder]);
 
   async function startRecording() {
     try {

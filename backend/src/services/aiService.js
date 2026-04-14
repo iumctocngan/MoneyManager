@@ -30,7 +30,7 @@ const responseSchema = {
       },
       categoryId: {
         type: Type.STRING,
-        description: "The category ID of the transaction. Map to the closest one. For expenses: 'food', 'transport', 'shopping', 'entertainment', 'health', 'education', 'housing', 'utilities', 'clothing', 'beauty', 'family', 'travel', 'sports', 'pet', 'gift', 'other_expense'. For income: 'salary', 'freelance', 'investment', 'bonus', 'rental', 'business', 'interest', 'gift_income', 'other_income'.",
+        description: "The category ID. SELECT ONLY THE ID STRING. Expenses: food, transport, shopping, entertainment, health, education, housing, utilities, clothing, beauty, family, travel, sports, pet, gift, other_expense. Income: salary, freelance, investment, bonus, rental, business, interest, gift_income, other_income.",
       },
       note: {
         type: Type.STRING,
@@ -59,21 +59,35 @@ export const aiService = {
     const audioBytes = fs.readFileSync(audioFilePath);
     const base64Data = audioBytes.toString('base64');
     
-    const today = new Date().toISOString();
+    // 1. Tối ưu lại cách trình bày Category để AI chắc chắn chỉ lấy ID
+    const categoryMapping = [
+      'food (Danh mục: Ăn uống)', 'transport (Danh mục: Di chuyển)', 'shopping (Mua sắm)', 'entertainment (Giải trí)', 
+      'health (Danh mục: Sức khỏe)', 'education (Danh mục: Giáo dục)', 'housing (Danh mục: Nhà cửa)', 'utilities (Danh mục: Tiện ích)', 
+      'clothing (Danh mục: Quần áo)', 'beauty (Danh mục: Làm đẹp)', 'family (Danh mục: Gia đình)', 'travel (Danh mục: Du lịch)', 
+      'sports (Danh mục: Thể thao)', 'pet (Danh mục: Thú cưng)', 'gift (Danh mục: Quà tặng)', 'other_expense (Danh mục: Chi phí khác)', 
+      'salary (Danh mục: Lương)', 'freelance (Danh mục: Làm tự do)', 'investment (Danh mục: Đầu tư)', 'bonus (Danh mục: Thưởng)', 
+      'rental (Danh mục: Cho thuê)', 'business (Danh mục: Kinh doanh)', 'interest (Danh mục: Lãi suất)', 'gift_income (Danh mục: Thu nhập quà tặng)', 
+      'other_income (Danh mục: Thu nhập khác)'
+    ].map(item => `ID: ${item}`).join('\n- ');
+
+    // 2. Fix lỗi múi giờ: Lấy giờ chuẩn VN (GMT+7) và format ra ISO 8601
+    const vnTime = new Date(new Date().getTime() + 7 * 60 * 60 * 1000); 
+    const today = vnTime.toISOString().replace('Z', '+07:00');
     
-    // Standard system prompt
     const prompt = `Bạn là một trợ lý quản lý tài chính thông minh.
-Nghe đoạn audio, trích xuất tất cả các giao dịch thu chi được nhắc đến.
-1. Xác định số tiền (amount) chính xác (ví dụ "năm trăm cành", "năm trăm k" = 500000, "1 triệu" = 1000000).
-2. Xác định loại (type): "expense" (chi tiêu) hoặc "income" (thu nhập).
-3. Phân loại (categoryId) phù hợp nhất theo danh sách ID đã cung cấp.
-4. Ghi chú (note) ngắn gọn bằng tiếng Việt.
-5. Ngày giờ (date): Luôn sử dụng ngày giờ hiện tại là ${today} cho tất cả các giao dịch. Bỏ qua mọi từ ngữ chỉ thời gian mà người dùng nói. Trả về định dạng ISO 8601.
+Nhiệm vụ của bạn là nghe đoạn audio và trích xuất TẤT CẢ các giao dịch thu chi được nhắc đến.
+
+QUY TẮC TRÍCH XUẤT:
+1. Số tiền (amount): Xác định chính xác bằng số nguyên (VND). Hiểu các từ lóng: "cành"/"k" = 1.000, "lít" = 100.000, "củ"/"triệu" = 1.000.000. (VD: "năm trăm cành" = 500000).
+2. Loại (type): "expense" (chi tiêu) hoặc "income" (thu nhập).
+3. Phân loại (categoryId): Lựa chọn ID phù hợp nhất CHỈ TRONG danh sách sau (Tuyệt đối chỉ lấy phần ID):
+- ${categoryMapping}
+4. Ghi chú (note): Ngắn gọn, súc tích bằng tiếng Việt (VD: "Ăn trưa", "Đổ xăng").
+5. Ngày giờ (date): LUÔN gán giá trị là "${today}" cho tất cả giao dịch, bỏ qua mọi từ ngữ chỉ thời gian mà người dùng nói. Trả về đúng định dạng ISO 8601.
 
 LƯU Ý QUAN TRỌNG (Xử lý tiếng ồn):
-- Lọc nhiễu: Nếu trong đoạn audio có tiếng ồn trắng, tiếng TV, hoặc nhiều người cùng nói, hãy CHỈ tập trung vào thông tin giao dịch của người dùng chính (người đang trực tiếp ghi chép).
-- Bỏ qua hội thoại thừa: Nếu người dùng đang nói chuyện với người khác (ví dụ: "Của chú hết bao nhiêu? Dạ 30 cành. Ok đây chú gửi nè") -> Hãy chỉ trích xuất giao dịch chi tiêu 30.000đ.
-- Nếu đoạn audio không chứa bất kỳ thông tin giao dịch tài chính nào rõ ràng, hãy trả về mảng rỗng [].
+- Lọc nhiễu: Chỉ tập trung vào thông tin của người dùng chính. Bỏ qua hoàn toàn tiếng ồn trắng, tiếng TV, hoặc giọng người khác xen vào.
+- Bỏ qua hội thoại thừa: Ví dụ audio "Của chú hết bao nhiêu? Dạ 30 cành. Ok đây chú gửi nè" -> Chỉ trích xuất 1 giao dịch chi tiêu amount: 30000.
 `;
 
     // Make the call to Gemini
@@ -100,7 +114,7 @@ LƯU Ý QUAN TRỌNG (Xử lý tiếng ồn):
           config: {
             responseMimeType: 'application/json',
             responseSchema: responseSchema,
-            temperature: 0.1,
+            temperature: 0,
           },
         });
         break; // success, exit retry loop
@@ -119,9 +133,9 @@ LƯU Ý QUAN TRỌNG (Xử lý tiếng ồn):
     
     try {
       return JSON.parse(resultText);
-    } catch (e) {
+    } catch (_e) {
       console.error('Failed to parse Gemini response', resultText);
-      throw new Error('Không thể phân tích phản hồi từ AI');
+      throw new Error('Không thể phân tích phản hồi từ AI', { cause: _e });
     }
   },
 };

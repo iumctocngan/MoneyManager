@@ -38,6 +38,7 @@ Use this file as the primary project brief.
 - Preserve Expo Router conventions. Route changes belong under `app/` and should not introduce custom navigation abstractions unless necessary.
 - Prefer shared design tokens and `Soft*` UI primitives over one-off styling when editing existing screens.
 - Keep domain logic out of screen components when it can live in the store or backend services.
+- **VND Standardization**: The application is strictly VND-only. All multi-currency logic, exchange rate calculations, and currency conversion fields have been removed.
 - Preserve Vietnamese product copy where it already exists, and save text files as UTF-8 to avoid mojibake.
 - Prefer project-local skills in `.agents/skills/` over any root-level generic skill bundles to ensure instructions remain tailored to this specific project.
 
@@ -60,9 +61,9 @@ When executing full-stack features, adhere to this order:
 
 ### 3. Verification Phase (Post-check)
 Before declaring a task "done" and requesting human review, you MUST run the following validations:
-- **Frontend Check:** Execute `npm run lint` and `npm run check`. Fix any TypeScript errors.
-- **Backend Check:** Execute `cd backend && npm run check`.
-- **Contract Check:** Explicitly confirm that frontend payloads match backend validation rules.
+- **Frontend Check**: Execute `npm run lint` and `npm run check`. Fix any TypeScript errors.
+- **Backend Check**: Execute `cd backend && npm run lint` and `cd backend && npm run check`.
+- **Contract Check**: Explicitly confirm that frontend payloads match backend validation rules.
 
 ## Commands
 
@@ -80,6 +81,7 @@ Backend:
 - `cd backend && npm run dev`
 - `cd backend && npm run start`
 - `cd backend && npm run check`
+- `cd backend && npm run lint`
 
 ## Environment Notes
 
@@ -91,7 +93,7 @@ Backend:
 ## Verification
 
 - For frontend changes, run `npm run lint` and `npm run check`.
-- For backend changes, run `cd backend && npm run check`.
+- For backend changes, run `cd backend && npm run lint` and `cd backend && npm run check`.
 - For API-contract changes, verify both the backend route/service path and the frontend store/client path.
 - This repo does not have a real automated test suite yet. Do not claim tests passed unless you actually added and ran them.
 

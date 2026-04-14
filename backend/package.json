@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "check": "node --check src/server.js"
+    "check": "node --check src/server.js",
+    "lint": "eslint src/**"
   },
   "dependencies": {
     "@google/genai": "^1.49.0",
@@ -16,5 +17,10 @@
     "morgan": "^1.10.0",
     "multer": "^2.1.1",
     "mysql2": "^3.15.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.2.0",
+    "globals": "^17.5.0"
   }
 }

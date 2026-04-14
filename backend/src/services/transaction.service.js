@@ -3,7 +3,7 @@ import { execute, query, withTransaction } from '../config/database.js';
 import { toMysqlDateTime } from '../utils/datetime.js';
 import { HttpError } from '../utils/http-error.js';
 import { mapTransaction } from '../utils/serializers.js';
-import { assertWalletExists, adjustWalletBalance, getWalletById } from './wallet.service.js';
+import { assertWalletExists, adjustWalletBalance } from './wallet.service.js';
 
 const TRANSACTION_SELECT = `
   SELECT
