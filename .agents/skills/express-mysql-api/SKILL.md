@@ -21,11 +21,14 @@ Keep `routes/` focused on HTTP wiring and use `services/` for business logic.
 - **Services**: Handle database interaction, calculations, and business rules.
 
 ### Atomicity with Transactions
-Use `withTransaction` for operations touching multiple tables (e.g., creating a transaction and updating wallet balance).
 ```javascript
+// Services handle transactions internally for consistency
+await createTransaction(userId, payload);
+
+// Or use withTransaction for custom multi-step operations
 await withTransaction(async (connection) => {
-  await createTransaction(connection, userId, payload);
-  await adjustWalletBalance(connection, userId, walletId, amount);
+  await adjustWalletBalance(connection, userId, walletId, 1000);
+  await logAuditTrail(connection, userId, 'Balance adjustment');
 });
 ```
 

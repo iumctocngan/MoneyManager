@@ -12,9 +12,9 @@ Use this skill for all frontend work in `frontend/app/`, `frontend/components/`,
 ### Composition over Props
 Prefer nesting components to create flexible layouts.
 ```tsx
-<SoftCard>
-  <SoftText variant="h1">{title}</SoftText>
-  <TransactionList items={items} />
+<SoftCard style={{ padding: 16 }}>
+  <SectionHeading title={title} />
+  {/* Render items using flatlist or map with TransactionItem */}
 </SoftCard>
 ```
 

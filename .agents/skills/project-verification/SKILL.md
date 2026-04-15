@@ -8,11 +8,11 @@ description: Mandatory verification loop for build, contract, and UX checks.
 Follow this loop before finishing any code change.
 
 ## 1. Automated Checks (Root Context)
-Run these commands and ensure they pass:
-- **Frontend**: Run `npm run lint` (ESLint)
-- Run `npx tsc --noEmit` (TypeScript)
-- Run `cd backend && npm run check` (Syntax)
-- Run `cd backend && npm run lint` (ESLint)
+Run these commands from the **root directory** and ensure they pass:
+- **Frontend**: Run `npm run frontend:lint` (ESLint)
+- **Frontend**: Run `npm run frontend:check` (TypeScript + static checks)
+- **Backend**: Run `npm run backend:check` (Syntax)
+- **Backend**: Run `npm run backend:lint` (ESLint)
 
 ## 2. Contract Verification
 If API shapes changed, verify the "Handshake":

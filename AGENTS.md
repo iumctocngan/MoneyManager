@@ -4,7 +4,7 @@ This repository is a mobile-first money manager app with a separate API server, 
 
 ## 🎯 Project Context
 
-- **Frontend**: Expo 55, React Native, Expo Router, Zustand, AsyncStorage.
+- **Frontend**: Expo 54, React Native, Expo Router, Zustand, AsyncStorage.
 - **Backend**: Node.js, Express 4, MySQL, token-based auth.
 - **Strict Constraints**: 
   - **VND-only**: The app is strictly VND-only. Never add multi-currency logic.
