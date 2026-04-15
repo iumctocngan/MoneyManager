@@ -1,30 +1,40 @@
 ---
 name: express-mysql-api
-description: Project-specific guidance for the Express and MySQL backend in this repository.
-origin: Project
+description: Backend logic, database transactions, and security for the Node/Express API.
 ---
 
 # Express MySQL API
 
-Use this skill for work in `backend/src/` and `backend/sql/`.
+Use this skill for all work in `backend/src/`.
 
-## Current Architecture
+## 🛡 Security Checklist (CRITICAL)
 
-- Route wiring lives in `backend/src/routes/`
-- Business logic lives in `backend/src/services/`
-- Shared helpers, validation, token, and serializer code live in `backend/src/utils/`
-- Environment and database setup live in `backend/src/config/`
+- **Auth Scoping**: Every query MUST filter by `user_id = :userId`. Never return data belonging to other users.
+- **SQL Injection**: Use parameterized queries (`:paramName`) via the `execute` helper. Never concatenate raw strings.
+- **Validation**: Validate all incoming payloads in the controller or service layer before processing.
 
-## Preferred Patterns
+## 🏗 Backend Architecture
 
-- Keep route files thin. Put real behavior in service functions.
-- Reuse existing helpers for validation, auth, error handling, and serialization before adding new abstractions.
-- Keep authenticated routes scoped to the current user and consistent with the auth flow described in `backend/AUTH.md`.
-- Update `backend/sql/schema.sql` when a persistent data shape changes.
-- If a change affects frontend usage, review `utils/api.ts` and `store/app-store.ts` in the app.
+### Thin Routes, Heavy Services
+Keep `routes/` focused on HTTP wiring and use `services/` for business logic.
+- **Routes**: Handle request parsing and response sending.
+- **Services**: Handle database interaction, calculations, and business rules.
 
-## Verification
+### Atomicity with Transactions
+Use `withTransaction` for operations touching multiple tables (e.g., creating a transaction and updating wallet balance).
+```javascript
+await withTransaction(async (connection) => {
+  await createTransaction(connection, userId, payload);
+  await adjustWalletBalance(connection, userId, walletId, amount);
+});
+```
 
-- Run `cd backend && npm run check`
-- If env or auth behavior changes, verify `backend/.env.example` and `backend/AUTH.md` still match the code
+### Serializers
+Always use `map*` serializers from `utils/serializers.js` to ensure the API matches the frontend expected types.
+
+## 🧪 Verification
+
+1. **Syntax Check**: Run `npm run backend:check` from the root.
+2. **Contract Sync**: If a return shape changes, update `frontend/utils/api.ts` immediately.
+3. **Auth Check**: Manually verify that resources are correctly isolated per user.
 

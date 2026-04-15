@@ -1,31 +1,35 @@
 ---
 name: project-verification
-description: Verification checklist tailored to this Expo + Express repository.
-origin: Project
+description: Mandatory verification loop for build, contract, and UX checks.
 ---
 
-# Project Verification
+# Project Verification Loop
 
-Use this before finishing any meaningful code change.
+Follow this loop before finishing any code change.
 
-## Frontend Changes
+## 1. Automated Checks (Root Context)
+Run these commands and ensure they pass:
+- **Frontend**: Run `npm run lint` (ESLint)
+- Run `npx tsc --noEmit` (TypeScript)
+- Run `cd backend && npm run check` (Syntax)
+- Run `cd backend && npm run lint` (ESLint)
 
-- Run `npm run lint`
-- Run `npx tsc --noEmit`
+## 2. Contract Verification
+If API shapes changed, verify the "Handshake":
+- **Backend**: Inspect `backend/src/utils/serializers.js` and `routes/`.
+- **API Client**: Inspect `frontend/utils/api.ts`.
+- **Store**: Inspect `frontend/store/app-store.ts`.
+- Confirm `Transaction`, `Wallet`, and `Budget` type signatures match between layers.
 
-## Backend Changes
+## 3. Manual UX Verification
+Since there is no automated test suite yet, perform these manual checks:
+- **Navigation**: Verify affected screens open and transition correctly.
+- **State**: Check if the UI updates immediately after a CRUD operation.
+- **Persistent Context**: Kill and restart the app to ensure data is restored via Zustand persistence.
 
-- Run `cd backend && npm run check`
-
-## Contract Changes
-
-- Review `utils/api.ts`
-- Review `store/app-store.ts`
-- Review the affected backend route and service files
-- Confirm request and response shapes still line up
-
-## Notes
-
-- There is no established automated test suite yet.
-- Do not report tests as passed unless you added and ran them.
-- If you skip a verification step, say so explicitly in the final handoff.
+## 4. Self-Review Checklist
+- [ ] No hardcoded secrets.
+- [ ] No `console.log` left in production.
+- [ ] Vietnamese copy preserved.
+- [ ] Strict VND-only logic maintained.
+- [ ] Every backend query is scoped to `:userId`.

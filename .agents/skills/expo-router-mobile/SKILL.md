@@ -1,35 +1,49 @@
 ---
 name: expo-router-mobile
-description: Project-specific guidance for the Expo Router mobile app in this repository.
-origin: Project
+description: UI patterns, store orchestration, and mobile edge cases for this Expo app.
 ---
 
 # Expo Router Mobile
 
-Use this skill for work in `app/`, `components/`, `hooks/`, `store/`, `constants/`, `services/`, and `utils/`.
+Use this skill for all frontend work in `frontend/app/`, `frontend/components/`, and `frontend/store/`.
 
-## What To Preserve
+## 🏗 Component Patterns
 
-- Expo Router file-based navigation under `app/`
-- Zustand as the app state boundary
-- `utils/api.ts` as the HTTP client boundary
-- Shared design tokens from `constants/` and existing `Soft*` components
+### Composition over Props
+Prefer nesting components to create flexible layouts.
+```tsx
+<SoftCard>
+  <SoftText variant="h1">{title}</SoftText>
+  <TransactionList items={items} />
+</SoftCard>
+```
 
-## Preferred Patterns
+### Store-First Orchestration
+Screens should be thin. Move API calls and complex logic to `frontend/store/app-store.ts`.
+```tsx
+// PASS: Screen just reads state and triggers actions
+const { transactions, addTransaction } = useStore();
+```
 
-- Put screen orchestration in `store/app-store.ts` instead of duplicating request logic inside screens.
-- When adding or changing routes, keep them consistent with the current `auth`, `tabs`, `wallet`, `transaction`, `budget`, `(reporting)`, and `(tools)` structure.
-- Reuse shared helpers from `utils/` and shared types from `constants/types.ts`.
-- Use `SafeAreaView` or `SafeAreaProvider` where screen layout depends on safe areas.
-- Keep mobile-specific edge cases in mind: Android back behavior, Expo host URLs, smaller screens, and loading states.
+## 📱 Mobile Edge Cases
 
-## When API Work Is Involved
+### SafeArea Handling
+Ensure content doesn't overlap with notches or home indicators.
+- Use `SafeAreaView` from `react-native-safe-area-context`.
+- Use `useSafeAreaInsets()` for custom header offsets.
 
-- Check whether the change also requires updates in `backend/src/routes/`, `backend/src/services/`, or `backend/sql/schema.sql`.
-- If a backend response shape changes, update `utils/api.ts` and any affected store actions.
+### Keyboard Complexity
+- Use `KeyboardAvoidingView` on forms.
+- Ensure the "Submit" buttons are visible when the keyboard is active.
+- Use `ScrollView` with `keyboardShouldPersistTaps="handled"`.
 
-## Verification
+### Navigation & Back Behavior
+- Handle the Android physical back button using `BackHandler` if custom modal logic is present.
+- Use Expo Router's `<Link>` or `router.push()` for navigation.
 
-- Run `npm run lint`
-- Run `npx tsc --noEmit`
+## 🧪 Verification
+
+1. **Static Analysis**: Run `npm run frontend:check` from the root.
+2. **UI Check**: Verify on both iOS and Android if possible. 
+3. **Contrast**: Ensure text is readable against the current theme (light/dark).
 

@@ -1,12 +1,20 @@
-import { 
-  useAudioRecorder, 
-  useAudioRecorderState, 
-  RecordingPresets, 
-  requestRecordingPermissionsAsync, 
-  setAudioModeAsync 
+import { SoftBackdrop } from '@/components/ui/soft';
+import { shadow, SoftColors } from '@/constants/design';
+import { Transaction } from '@/constants/types';
+import { useStore } from '@/store/app-store';
+import { generateId } from '@/utils';
+import { api } from '@/utils/api';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  AudioQuality,
+  IOSOutputFormat,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
 } from 'expo-audio';
 import { router, Stack } from 'expo-router';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,30 +28,56 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useStore } from '@/store/app-store';
-import { api } from '@/utils/api';
-import { Transaction } from '@/constants/types';
-import { generateId } from '@/utils';
-import { SoftColors, shadow } from '@/constants/design';
-import { SoftBackdrop } from '@/components/ui/soft';
+
+/**
+ * Config ghi âm tối ưu cho nhận diện giọng nói (speech recognition).
+ *
+ * Tại sao KHÔNG dùng RecordingPresets.HIGH_QUALITY:
+ * - HIGH_QUALITY dùng 44.1kHz stereo → file nặng, không cải thiện speech accuracy
+ * - Whisper được train chuẩn trên 16kHz mono → dùng đúng chuẩn cho accuracy tốt nhất
+ * - Mono loại bỏ nhiễu phase giữa 2 kênh trong môi trường ồn (lớp học, quán cafe)
+ * - bitRate 32kbps đủ cho giọng nói, file nhẹ hơn ~6x → upload nhanh hơn
+ */
+const SPEECH_RECORDING_OPTIONS = {
+  extension: '.m4a',
+  sampleRate: 16000,        // chuẩn Whisper
+  numberOfChannels: 1,      // mono — đủ cho speech, giảm nhiễu stereo
+  bitRate: 32000,
+  android: {
+    outputFormat: 'mpeg4' as const,   // AndroidOutputFormat string union
+    audioEncoder: 'aac' as const,     // AndroidAudioEncoder string union
+  },
+  ios: {
+    outputFormat: IOSOutputFormat.MPEG4AAC,
+    audioQuality: AudioQuality.MEDIUM,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {
+    mimeType: 'audio/webm',
+    bitsPerSecond: 32000,
+  },
+};
+
 export default function AiVoiceScreen() {
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorder = useAudioRecorder(SPEECH_RECORDING_OPTIONS);
   const isRecording = useAudioRecorderState(recorder).isRecording;
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcribedItems, setTranscribedItems] = useState<Partial<Transaction>[]>([]);
-  
-  const { 
-    authToken: token, 
-    getCategoryById, 
-    addTransactionsBatch, 
-    selectedWalletId, 
-    wallets, 
-    setSelectedWallet 
+
+  const {
+    authToken: token,
+    getCategoryById,
+    addTransactionsBatch,
+    selectedWalletId,
+    wallets,
+    setSelectedWallet,
   } = useStore();
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
+  // Animation pulse khi đang ghi âm
   useEffect(() => {
     if (isRecording) {
       Animated.loop(
@@ -67,16 +101,14 @@ export default function AiVoiceScreen() {
     }
   }, [isRecording, pulseAnim]);
 
+  // Cleanup khi unmount
   useEffect(() => {
-    // Cleanup recorder and audio mode on unmount
     return () => {
       const cleanup = async () => {
         try {
-          if (recorder.uri) {
-            await recorder.stop();
-          }
+          if (recorder.uri) await recorder.stop();
           await setAudioModeAsync({ allowsRecording: false });
-        } catch {}
+        } catch { }
       };
       void cleanup();
     };
@@ -84,8 +116,8 @@ export default function AiVoiceScreen() {
 
   async function startRecording() {
     try {
-      const response = await requestRecordingPermissionsAsync();
-      if (!response.granted) {
+      const { granted } = await requestRecordingPermissionsAsync();
+      if (!granted) {
         Alert.alert('Lỗi', 'Cần cấp quyền microphone để ghi âm');
         return;
       }
@@ -98,7 +130,7 @@ export default function AiVoiceScreen() {
       await recorder.prepareToRecordAsync();
       recorder.record();
     } catch (err) {
-      console.error('Failed to start recording', err);
+      console.error('Không thể bắt đầu ghi âm:', err);
       Alert.alert('Lỗi', 'Không thể bắt đầu ghi âm');
     }
   }
@@ -110,26 +142,19 @@ export default function AiVoiceScreen() {
 
     try {
       await recorder.stop();
-
-      await setAudioModeAsync({
-        allowsRecording: false,
-      });
+      await setAudioModeAsync({ allowsRecording: false });
 
       const uri = recorder.uri;
-
       if (!uri) throw new Error('Không tìm thấy file ghi âm');
-
-      // Upload and transcribe
       if (!token) throw new Error('Yêu cầu đăng nhập');
-      
+
       const items = await api.uploadAudio(token, uri);
       setTranscribedItems((prev) => [...prev, ...items]);
     } catch (error: any) {
       if (error.status === 429 || error.message?.includes('429')) {
-        console.warn('Rate limit hit (429):', error.message);
         Alert.alert('Thông báo', 'Bạn đã hết lượt dùng thử hôm nay. Vui lòng quay lại sau!');
       } else {
-        console.error('Transcription error:', error);
+        console.error('Lỗi xử lý giọng nói:', error);
         Alert.alert('Lỗi', error.message || 'Không thể xử lý giọng nói');
       }
     } finally {
@@ -145,7 +170,7 @@ export default function AiVoiceScreen() {
 
     try {
       setIsProcessing(true);
-      const transactionsToSave = transcribedItems.map((item) => ({
+      const transactionsToSave: Transaction[] = transcribedItems.map((item) => ({
         id: generateId(),
         walletId: selectedWalletId,
         type: item.type as any,
@@ -154,11 +179,11 @@ export default function AiVoiceScreen() {
         date: item.date || new Date().toISOString(),
         note: item.note || '',
         createdAt: new Date().toISOString(),
-      }) as Transaction);
+      }));
 
       await addTransactionsBatch(transactionsToSave);
-      Alert.alert('Thành công', 'Đã lưu các giao dịch hợp lệ!', [
-        { text: 'OK', onPress: () => router.back() }
+      Alert.alert('Thành công', 'Đã lưu các giao dịch!', [
+        { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error: any) {
       Alert.alert('Lỗi', error.message || 'Không thể lưu giao dịch');
@@ -170,24 +195,27 @@ export default function AiVoiceScreen() {
     setTranscribedItems((prev) => prev.filter((_, i) => i !== index));
   }
 
-  const renderItem = ({ item, index }: { item: Partial<Transaction>, index: number }) => {
+  const renderItem = ({ item, index }: { item: Partial<Transaction>; index: number }) => {
     const category = getCategoryById(item.categoryId || '');
     const isExpense = item.type === 'expense';
-    
+
     return (
       <View style={styles.card}>
         <View style={[styles.iconContainer, { backgroundColor: category?.color || '#ccc' }]}>
-          <Ionicons name={category?.icon as any || 'help-outline'} size={24} color="#fff" />
+          <Ionicons name={(category?.icon as any) || 'help-outline'} size={24} color="#fff" />
         </View>
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle}>{category?.name || 'Không rõ'}</Text>
-          <Text style={styles.cardSubtitle}>{new Date(item.date || '').toLocaleDateString('vi-VN')}</Text>
+          <Text style={styles.cardSubtitle}>
+            {new Date(item.date || '').toLocaleDateString('vi-VN')}
+          </Text>
         </View>
         <View style={styles.cardRight}>
           <Text style={[styles.cardAmount, { color: isExpense ? SoftColors.red : SoftColors.primary }]}>
-            {isExpense ? '-' : '+'}{item.amount?.toLocaleString('vi-VN')} đ
+            {isExpense ? '-' : '+'}
+            {item.amount?.toLocaleString('vi-VN')} đ
           </Text>
-          {item.note && <Text style={styles.cardNote}>{item.note}</Text>}
+          {item.note ? <Text style={styles.cardNote}>{item.note}</Text> : null}
         </View>
         <TouchableOpacity onPress={() => removeItem(index)} style={styles.removeBtn}>
           <Ionicons name="close-circle" size={24} color={SoftColors.muted} />
@@ -199,41 +227,43 @@ export default function AiVoiceScreen() {
   return (
     <View style={styles.root}>
       <SoftBackdrop />
-      <Stack.Screen 
+      <Stack.Screen
         options={{
           headerShown: true,
           headerTransparent: true,
           headerTintColor: SoftColors.text,
           headerTitle: '',
           headerBackVisible: false,
-        }} 
+        }}
       />
       <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>ỨNG DỤNG AI</Text>
           <Text style={styles.subtitle}>Ghi chép bằng giọng nói{'\n'}cực nhanh</Text>
         </View>
 
+        {/* Chọn ví */}
         <View style={styles.walletSection}>
           <Text style={styles.sectionLabel}>Chọn ví để ghi nhận:</Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.walletsScroll}
           >
-            {wallets.map(wallet => {
+            {wallets.map((wallet) => {
               const isActive = wallet.id === selectedWalletId;
               return (
-                <TouchableOpacity 
-                  key={wallet.id} 
+                <TouchableOpacity
+                  key={wallet.id}
                   style={[styles.walletItem, isActive && styles.walletItemActive]}
                   onPress={() => setSelectedWallet(wallet.id)}
                   activeOpacity={0.8}
                 >
-                  <Ionicons 
-                    name="wallet" 
-                    size={20} 
-                    color={isActive ? '#fff' : SoftColors.primaryDark} 
+                  <Ionicons
+                    name="wallet"
+                    size={20}
+                    color={isActive ? '#fff' : SoftColors.primaryDark}
                   />
                   <Text style={[styles.walletName, isActive && styles.walletTextActive]}>
                     {wallet.name}
@@ -244,11 +274,14 @@ export default function AiVoiceScreen() {
           </ScrollView>
         </View>
 
+        {/* Danh sách giao dịch đã nhận diện */}
         {transcribedItems.length > 0 && (
           <View style={styles.listContainer}>
             <TouchableOpacity style={styles.doneBanner} onPress={saveTransactions}>
               <Ionicons name="checkmark-circle" size={20} color={SoftColors.primary} />
-              <Text style={styles.doneText}>Đã ghi xong ({transcribedItems.length} mục) - Lưu ngay</Text>
+              <Text style={styles.doneText}>
+                Đã ghi xong ({transcribedItems.length} mục) — Lưu ngay
+              </Text>
             </TouchableOpacity>
             <FlatList
               data={transcribedItems}
@@ -260,6 +293,7 @@ export default function AiVoiceScreen() {
           </View>
         )}
 
+        {/* Vùng ghi âm phía dưới */}
         <View style={styles.bottomArea}>
           <Text style={styles.hintText}>
             {isProcessing ? 'Đang xử lý...' : isRecording ? 'Đang nghe...' : 'Hôm nay tôi...'}
@@ -269,8 +303,8 @@ export default function AiVoiceScreen() {
           </Text>
 
           <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-            <TouchableOpacity 
-              style={[styles.recordButton, isRecording && styles.recordingActive]} 
+            <TouchableOpacity
+              style={[styles.recordButton, isRecording && styles.recordingActive]}
               onPress={isRecording ? stopRecording : startRecording}
               disabled={isProcessing}
             >
@@ -315,6 +349,42 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
     opacity: 0.9,
+  },
+  walletSection: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: SoftColors.muted,
+    marginBottom: 10,
+    marginLeft: 4,
+  },
+  walletsScroll: {
+    paddingHorizontal: 4,
+    gap: 10,
+  },
+  walletItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    ...shadow.soft,
+    gap: 8,
+  },
+  walletItemActive: {
+    backgroundColor: SoftColors.primary,
+  },
+  walletName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: SoftColors.text,
+  },
+  walletTextActive: {
+    color: '#fff',
   },
   listContainer: {
     flex: 1,
@@ -371,7 +441,7 @@ const styles = StyleSheet.create({
   },
   cardRight: {
     alignItems: 'flex-end',
-    marginRight: 8, // space for close button
+    marginRight: 8,
   },
   cardAmount: {
     fontSize: 16,
@@ -426,41 +496,5 @@ const styles = StyleSheet.create({
   recordingActive: {
     backgroundColor: '#FFE5E5',
     transform: [{ scale: 1.1 }],
-  },
-  walletSection: {
-    paddingHorizontal: 16,
-    marginBottom: 20,
-  },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: SoftColors.muted,
-    marginBottom: 10,
-    marginLeft: 4,
-  },
-  walletsScroll: {
-    paddingHorizontal: 4,
-    gap: 10,
-  },
-  walletItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    ...shadow.soft,
-    gap: 8,
-  },
-  walletItemActive: {
-    backgroundColor: SoftColors.primary,
-  },
-  walletName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: SoftColors.text,
-  },
-  walletTextActive: {
-    color: '#fff',
   },
 });
