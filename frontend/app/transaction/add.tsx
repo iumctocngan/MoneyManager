@@ -211,6 +211,7 @@ export default function AddTransactionScreen() {
         <TouchableOpacity 
           style={styles.fabActionButton} 
           activeOpacity={0.85}
+          onPress={() => router.push('/scan-receipt' as any)}
         >
           <Ionicons name="scan" size={20} color="#fff" />
         </TouchableOpacity>

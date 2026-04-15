@@ -12,5 +12,6 @@ const upload = multer({
 });
 
 router.post('/transcribe', upload.single('audio'), aiController.transcribe);
+router.post('/scan-receipt', upload.single('image'), aiController.scanReceipt);
 
 export default router;

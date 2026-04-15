@@ -229,4 +229,36 @@ export const api = {
       throw new ApiError(e.message || 'Network request failed', 0);
     }
   },
+
+  async uploadReceipt(token: string, imageUri: string) {
+    try {
+      const response = await FileSystem.uploadAsync(
+        `${API_BASE_URL}/api/ai/scan-receipt`,
+        imageUri,
+        {
+          httpMethod: 'POST',
+          uploadType: 1, // FileSystemUploadType.MULTIPART
+          fieldName: 'image',
+          mimeType: 'image/jpeg',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status !== 200) {
+        let msg = 'Failed to scan receipt';
+        try {
+          const errorJson = JSON.parse(response.body);
+          msg = errorJson.message || errorJson.error?.message || msg;
+        } catch {}
+        throw new ApiError(msg, response.status);
+      }
+
+      return JSON.parse(response.body) as Partial<Transaction>[];
+    } catch (e: any) {
+      if (e instanceof ApiError) throw e;
+      throw new ApiError(e.message || 'Network request failed', 0);
+    }
+  },
 };
