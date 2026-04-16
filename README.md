@@ -26,22 +26,11 @@ npm run install:all
 
 ### Chạy Backend (API):
 ```bash
-npm run backend:dev
+npm run dev
 ```
 
 ### Chạy Frontend (Expo Mobile):
 ```bash
-npm run frontend:start
+npm start
 ```
 *Sau đó quét mã QR bằng ứng dụng **Expo Go** (Android) hoặc **Camera** (iOS).*
-
-## 6. Lệnh kiểm tra và bảo trì
-
-Bạn có thể kiểm tra lỗi code (lint) và kiểu dữ liệu (typescript) từ thư mục gốc:
-
-- **Kiểm tra tất cả**: `npm run lint:all`
-- **Kiểm tra Frontend**: `npm run frontend:check`
-- **Kiểm tra Backend**: `npm run backend:check`
-
----
-*Để biết thêm chi tiết về quy trình phát triển, vui lòng xem file `AGENTS.md`.*

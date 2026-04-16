@@ -124,127 +124,82 @@ export async function createWallet(userId, payload) {
 }
 
 export async function updateWallet(userId, id, payload) {
-  const current = await getWalletById(userId, id);
+  return await withTransaction(async (connection) => {
+    const current = await getWalletById(userId, id, connection);
 
-  if (!current) {
-    throw new HttpError(404, 'Wallet not found.');
-  }
+    if (!current) {
+      throw new HttpError(404, 'Wallet not found.');
+    }
 
-  const updates = [];
-  const params = { id, userId };
+    const updates = [];
+    const params = { id, userId };
 
-  if (payload.name !== undefined) {
-    updates.push('name = :name');
-    params.name = payload.name;
-  }
+    if (payload.name !== undefined) {
+      updates.push('name = :name');
+      params.name = payload.name;
+    }
 
-  if (payload.balance !== undefined) {
-    updates.push('balance = :balance');
-    params.balance = payload.balance;
-  }
+    if (payload.balance !== undefined) {
+      // Chú ý: Việc ghi đè balance trực tiếp có thể gây lệch dữ liệu nếu có giao dịch song song.
+      // Ưu tiên điều chỉnh qua giao dịch.
+      updates.push('balance = :balance');
+      params.balance = Math.round(payload.balance);
+    }
 
-  if (payload.color !== undefined) {
-    updates.push('color = :color');
-    params.color = payload.color;
-  }
+    if (payload.color !== undefined) {
+      updates.push('color = :color');
+      params.color = payload.color;
+    }
 
-  if (payload.icon !== undefined) {
-    updates.push('icon = :icon');
-    params.icon = payload.icon;
-  }
+    if (payload.icon !== undefined) {
+      updates.push('icon = :icon');
+      params.icon = payload.icon;
+    }
 
-  if (payload.includeInTotal !== undefined) {
-    updates.push('include_in_total = :includeInTotal');
-    params.includeInTotal = payload.includeInTotal;
-  }
+    if (payload.includeInTotal !== undefined) {
+      updates.push('include_in_total = :includeInTotal');
+      params.includeInTotal = payload.includeInTotal;
+    }
 
-  if (updates.length > 0) {
-    await query(
-      `
-        UPDATE wallets
-        SET ${updates.join(', ')}
-        WHERE id = :id AND user_id = :userId
-      `,
-      params
-    );
-  }
+    if (updates.length > 0) {
+      await execute(
+        connection,
+        `
+          UPDATE wallets
+          SET ${updates.join(', ')}
+          WHERE id = :id AND user_id = :userId
+        `,
+        params
+      );
+    }
 
-  return getWalletById(userId, id);
+    return getWalletById(userId, id, connection);
+  });
 }
 
 export async function deleteWallet(userId, id) {
   await withTransaction(async (connection) => {
-    const wallets = await listWallets(userId, connection);
-    const walletMap = new Map(wallets.map((w) => [w.id, w]));
-    const wallet = walletMap.get(id);
+    const wallet = await getWalletById(userId, id, connection);
 
     if (!wallet) {
       throw new HttpError(404, 'Wallet not found.');
     }
 
-    const relatedTransactions = await execute(
-      connection,
-      `
-        SELECT
-          id,
-          type,
-          amount,
-          wallet_id,
-          to_wallet_id
-        FROM transactions
-        WHERE user_id = :userId AND (wallet_id = :id OR to_wallet_id = :id)
-      `,
-      { id, userId }
-    );
-
-    for (const transaction of relatedTransactions) {
-      if (transaction.type !== 'transfer') {
-        continue;
-      }
-
-      // If we're deleting the source wallet, we need to subtract the amount
-      // from the destination wallet to undo the credit.
-      if (
-        transaction.wallet_id === id &&
-        transaction.to_wallet_id &&
-        transaction.to_wallet_id !== id
-      ) {
-        const transactionAmount = Number(transaction.amount);
-
-        await adjustWalletBalance(
-          connection,
-          userId,
-          transaction.to_wallet_id,
-          -transactionAmount
-        );
-      }
-
-      // If we're deleting the destination wallet, we add the amount
-      // back to the source wallet.
-      if (
-        transaction.to_wallet_id === id &&
-        transaction.wallet_id &&
-        transaction.wallet_id !== id
-      ) {
-        await adjustWalletBalance(
-          connection,
-          userId,
-          transaction.wallet_id,
-          Number(transaction.amount)
-        );
-      }
-    }
-
+    // Xóa tất cả giao dịch liên quan đến ví này
     await execute(
       connection,
       'DELETE FROM transactions WHERE user_id = :userId AND (wallet_id = :id OR to_wallet_id = :id)',
       { id, userId }
     );
+    
+    // Xóa các ngân sách liên quan đến ví này
     await execute(
       connection,
       'DELETE FROM budgets WHERE user_id = :userId AND wallet_id = :id',
       { id, userId }
     );
+    
+    // Cuối cùng xóa ví
     await execute(connection, 'DELETE FROM wallets WHERE user_id = :userId AND id = :id', {
       id,
       userId,

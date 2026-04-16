@@ -1,35 +1,36 @@
 import { aiService } from '../services/aiService.js';
+import { sendSuccess, sendError } from '../utils/response.js';
 
 export const transcribe = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'No audio file provided' });
+      return sendError(res, 'No audio file provided', 400);
     }
 
     const audioFilePath = req.file.path;
     const mimeType = req.file.mimetype;
 
     const transactions = await aiService.transcribeTransactions(audioFilePath, mimeType);
-    res.json(transactions);
+    sendSuccess(res, transactions);
   } catch (error) {
     console.error('Transcription error:', error);
-    res.status(500).json({ message: error.message || 'Error processing audio' });
+    sendError(res, error.message || 'Error processing audio');
   }
 };
 
 export const scanReceipt = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'No image file provided' });
+      return sendError(res, 'No image file provided', 400);
     }
 
     const imageFilePath = req.file.path;
     const mimeType = req.file.mimetype;
 
     const transactions = await aiService.scanReceipt(imageFilePath, mimeType);
-    res.json(transactions);
+    sendSuccess(res, transactions);
   } catch (error) {
     console.error('Receipt scan error:', error);
-    res.status(500).json({ message: error.message || 'Error scanning receipt' });
+    sendError(res, error.message || 'Error scanning receipt');
   }
 };

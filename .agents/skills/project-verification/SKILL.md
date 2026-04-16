@@ -9,8 +9,8 @@ Follow this loop before finishing any code change.
 
 ## 1. Automated Checks (Root Context)
 Run these commands from the **root directory** and ensure they pass:
-- **Frontend**: Run `npm run frontend:lint` (ESLint)
 - **Frontend**: Run `npm run frontend:check` (TypeScript + static checks)
+- **Frontend**: Run `npm run frontend:lint` (ESLint)
 - **Backend**: Run `npm run backend:check` (Syntax)
 - **Backend**: Run `npm run backend:lint` (ESLint)
 

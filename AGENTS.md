@@ -38,15 +38,6 @@ This repository is a mobile-first money manager app with a separate API server, 
 - **UI Primitives**: Use `Soft*` components and design tokens from `frontend/constants/`.
 - **Thin Routes**: Business rules belong in `services/`, not `routes/`.
 
-## 🧪 Diagnostic Commands (Run from Root)
-
-| Task | Command |
-| :--- | :--- |
-| **Full Setup** | `npm install` |
-| **Frontend Check** | `npm run frontend:check` (Lint + TS) |
-| **Backend Check** | `npm run backend:check` (Syntax) |
-| **Backend Dev** | `npm run backend:dev` |
-| **Frontend Start** | `npm run frontend:start` |
 
 ## 📚 Project-Local Skills
 

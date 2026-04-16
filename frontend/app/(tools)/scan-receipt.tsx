@@ -5,9 +5,9 @@ import { useStore } from '@/store/app-store';
 import { generateId } from '@/utils';
 import { api } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack } from 'expo-router';
-import { Image } from 'expo-image';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -21,9 +21,23 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// FIX: Thay boolean isProcessing bằng step enum để UI hiển thị đúng trạng thái
+type ProcessStep = 'idle' | 'uploading' | 'analyzing' | 'done' | 'error';
+
+const STEP_LABELS: Record<ProcessStep, string> = {
+  idle: '',
+  uploading: 'Đang tải ảnh lên...',
+  analyzing: 'Đang nhận diện hóa đơn...',
+  done: 'Hoàn tất',
+  error: 'Mạng yếu hoặc có lỗi',
+};
+
 export default function ScanReceiptScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  // FIX: Tách isProcessing thành step cụ thể
+  const [step, setStep] = useState<ProcessStep>('idle');
+  // FIX: Lưu lastUri để có thể retry mà không cần chọn lại ảnh
+  const [lastUri, setLastUri] = useState<string | null>(null);
   const [scannedItems, setScannedItems] = useState<Partial<Transaction>[]>([]);
 
   const {
@@ -34,6 +48,8 @@ export default function ScanReceiptScreen() {
     wallets,
     setSelectedWallet,
   } = useStore();
+
+  const isProcessing = step === 'uploading' || step === 'analyzing';
 
   async function pickImage() {
     try {
@@ -50,7 +66,7 @@ export default function ScanReceiptScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        processImage(result.assets[0].uri);
+        await processImage(result.assets[0].uri);
       }
     } catch (err) {
       console.error('Lỗi chọn ảnh:', err);
@@ -72,7 +88,7 @@ export default function ScanReceiptScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        processImage(result.assets[0].uri);
+        await processImage(result.assets[0].uri);
       }
     } catch (err) {
       console.error('Lỗi chụp ảnh:', err);
@@ -82,23 +98,39 @@ export default function ScanReceiptScreen() {
 
   async function processImage(uri: string) {
     setSelectedImage(uri);
-    setIsProcessing(true);
+    setLastUri(uri); // FIX: Lưu lại để retry
+    await doProcess(uri);
+  }
+
+  // FIX: Tách logic xử lý ra hàm riêng để retry có thể gọi lại
+  async function doProcess(uri: string) {
+    setStep('uploading');
 
     try {
       if (!token) throw new Error('Yêu cầu đăng nhập');
 
+      setStep('analyzing');
       const items = await api.uploadReceipt(token, uri);
+
+      // FIX: Không clear items cũ khi lỗi — append vào list hiện tại
       setScannedItems((prev) => [...prev, ...items]);
+      setStep('done');
     } catch (error: any) {
+      // FIX: Không clear scannedItems khi lỗi — giữ kết quả scan trước đó
+      setStep('error');
+
       if (error.status === 429 || error.message?.includes('429')) {
         Alert.alert('Thông báo', 'Bạn đã hết lượt dùng thử hôm nay. Vui lòng quay lại sau!');
-      } else {
-        console.error('Lỗi quét hóa đơn:', error);
-        Alert.alert('Lỗi', error.message || 'Không thể quét hóa đơn');
       }
-    } finally {
-      setIsProcessing(false);
+      // FIX: Không Alert cho lỗi khác — hiển thị inline với nút Thử lại thay vì popup
+      console.error('Lỗi quét hóa đơn:', error);
     }
+  }
+
+  // FIX: Hàm retry — dùng lastUri đã lưu, không cần chọn lại ảnh
+  async function retryProcess() {
+    if (!lastUri) return;
+    await doProcess(lastUri);
   }
 
   async function saveTransactions() {
@@ -108,7 +140,7 @@ export default function ScanReceiptScreen() {
     }
 
     try {
-      setIsProcessing(true);
+      setStep('uploading'); // tái dùng để disable các nút
       const transactionsToSave: Transaction[] = scannedItems.map((item) => ({
         id: generateId(),
         walletId: selectedWalletId,
@@ -126,13 +158,24 @@ export default function ScanReceiptScreen() {
       ]);
     } catch (error: any) {
       Alert.alert('Lỗi', error.message || 'Không thể lưu giao dịch');
-      setIsProcessing(false);
+      setStep('idle');
     }
   }
 
   function removeItem(index: number) {
     setScannedItems((prev) => prev.filter((_, i) => i !== index));
-    if (scannedItems.length <= 1) setSelectedImage(null);
+    // FIX: Chỉ reset ảnh khi xóa hết toàn bộ items
+    if (scannedItems.length <= 1) {
+      setSelectedImage(null);
+      setStep('idle');
+    }
+  }
+
+  function handleReset() {
+    setSelectedImage(null);
+    setScannedItems([]);
+    setLastUri(null);
+    setStep('idle');
   }
 
   const renderItem = ({ item, index }: { item: Partial<Transaction>; index: number }) => {
@@ -218,15 +261,31 @@ export default function ScanReceiptScreen() {
         <View style={styles.mainContainer}>
           {selectedImage ? (
             <SoftCard style={styles.imagePreviewWrapper}>
-              <Image 
-                source={{ uri: selectedImage }} 
-                style={styles.imagePreview} 
+              <Image
+                source={{ uri: selectedImage }}
+                style={styles.imagePreview}
                 contentFit="contain"
               />
-              {isProcessing && (
+              {/* FIX: Overlay phân biệt rõ đang xử lý vs lỗi */}
+              {(isProcessing || step === 'error') && (
                 <View style={styles.loadingOverlay}>
-                  <ActivityIndicator color="#fff" size="large" />
-                  <Text style={styles.loadingText}>Đang nhận diện...</Text>
+                  {step === 'error' ? (
+                    // FIX: Hiển thị inline error + nút Thử lại thay vì Alert
+                    <>
+                      <Ionicons name="wifi-outline" size={40} color="#fff" />
+                      <Text style={styles.loadingText}>{STEP_LABELS.error}</Text>
+                      <TouchableOpacity style={styles.retryBtn} onPress={retryProcess}>
+                        <Ionicons name="refresh" size={16} color={SoftColors.primary} />
+                        <Text style={styles.retryText}>Thử lại</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    // FIX: Hiển thị step label cụ thể thay vì "Đang nhận diện..." chung chung
+                    <>
+                      <ActivityIndicator color="#fff" size="large" />
+                      <Text style={styles.loadingText}>{STEP_LABELS[step]}</Text>
+                    </>
+                  )}
                 </View>
               )}
             </SoftCard>
@@ -239,7 +298,7 @@ export default function ScanReceiptScreen() {
 
           {scannedItems.length > 0 && (
             <View style={styles.listContainer}>
-              <TouchableOpacity style={styles.doneBanner} onPress={saveTransactions}>
+              <TouchableOpacity style={styles.doneBanner} onPress={saveTransactions} disabled={isProcessing}>
                 <Ionicons name="checkmark-circle" size={20} color={SoftColors.primary} />
                 <Text style={styles.doneText}>
                   Đã nhận diện ({scannedItems.length} mục) — Lưu ngay
@@ -272,7 +331,8 @@ export default function ScanReceiptScreen() {
               <Text style={styles.btnLabel}>Chụp ảnh</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => { setSelectedImage(null); setScannedItems([]); }} disabled={isProcessing}>
+            {/* FIX: Nút Làm mới gọi handleReset thay vì inline lambda để dễ track */}
+            <TouchableOpacity style={styles.actionBtn} onPress={handleReset} disabled={isProcessing}>
               <View style={[styles.btnIcon, { backgroundColor: '#FFF3E0' }]}>
                 <Ionicons name="refresh" size={24} color="#FB8C00" />
               </View>
@@ -364,14 +424,32 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
   },
   loadingText: {
     color: '#fff',
-    marginTop: 10,
     fontWeight: '700',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  // FIX: Style cho nút Thử lại trong overlay
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    gap: 6,
+    marginTop: 4,
+  },
+  retryText: {
+    color: SoftColors.primary,
+    fontWeight: '700',
+    fontSize: 14,
   },
   emptyPlaceholder: {
     height: 200,

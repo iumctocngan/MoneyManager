@@ -186,7 +186,7 @@ export function normalizeWalletPayload(payload, { partial = false } = {}) {
   }
 
   if (!partial || hasOwn(payload, 'balance')) {
-    result.balance = parseNumber(payload.balance, 'balance', { required: !partial });
+    result.balance = parseNumber(payload.balance, 'balance', { required: !partial, integer: true });
   }
 
 
@@ -228,7 +228,7 @@ export function normalizeTransactionPayload(payload, { partial = false } = {}) {
   }
 
   if (!partial || hasOwn(payload, 'amount')) {
-    result.amount = parseNumber(payload.amount, 'amount', { required: !partial, min: 0.01 });
+    result.amount = parseNumber(payload.amount, 'amount', { required: !partial, min: 0, integer: true });
   }
 
   if (!partial || hasOwn(payload, 'categoryId')) {
@@ -304,7 +304,7 @@ export function normalizeBudgetPayload(payload, { partial = false } = {}) {
   }
 
   if (!partial || hasOwn(payload, 'amount')) {
-    result.amount = parseNumber(payload.amount, 'amount', { required: !partial, min: 0.01 });
+    result.amount = parseNumber(payload.amount, 'amount', { required: !partial, min: 0, integer: true });
   }
 
 

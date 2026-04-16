@@ -79,18 +79,52 @@ function getVnNow() {
 }
 
 /**
- * Retry với exponential back-off.
- * Retry khi gặp 503 (model quá tải) hoặc 429 (rate limit).
+ * FIX: Thêm timeout wrapper — tránh request "treo" vô tận khi mạng kém.
+ * @param {Promise} promise  Promise cần giới hạn thời gian
+ * @param {number}  ms       Giới hạn ms (default 45s)
  */
-async function withRetry(fn, retries = 3, baseDelayMs = 2000) {
+function withTimeout(promise, ms = 45000) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const err = new Error(`Request timeout sau ${ms / 1000}s`);
+      err.isTimeout = true;
+      reject(err);
+    }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * FIX: Retry với true exponential back-off + jitter.
+ *
+ * Thay đổi so với bản cũ:
+ * 1. Bắt thêm lỗi mạng thực sự: ECONNRESET, ETIMEDOUT, fetch failed, timeout
+ * 2. Delay = baseDelayMs * 2^(attempt-1) + jitter (0–500ms) — tránh thundering herd
+ * 3. baseDelayMs giảm xuống 1000ms để không chờ quá lâu khi retry
+ */
+async function withRetry(fn, retries = 3, baseDelayMs = 1000) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       return await fn();
     } catch (err) {
-      const retryable = err.status === 503 || err.status === 429;
-      if (retryable && attempt < retries) {
-        const wait = baseDelayMs * attempt;
-        console.warn(`[aiService] Lần ${attempt} thất bại (${err.status}). Thử lại sau ${wait}ms…`);
+      const isNetworkErr =
+        err.isTimeout ||
+        err.code === 'ECONNRESET' ||
+        err.code === 'ETIMEDOUT' ||
+        err.code === 'ENOTFOUND' ||
+        err.code === 'ECONNREFUSED' ||
+        err.message?.includes('fetch failed') ||
+        err.message?.includes('network') ||
+        err.message?.includes('socket');
+
+      const isRetryable = isNetworkErr || err.status === 503 || err.status === 429;
+
+      if (isRetryable && attempt < retries) {
+        // Exponential backoff: 1s → 2s → 4s + jitter
+        const jitter = Math.random() * 500;
+        const wait = baseDelayMs * Math.pow(2, attempt - 1) + jitter;
+        console.warn(`[aiService] Lần ${attempt} thất bại (${err.code || err.status || err.message}). Thử lại sau ${Math.round(wait)}ms…`);
         await new Promise((r) => setTimeout(r, wait));
       } else {
         throw err;
@@ -116,7 +150,6 @@ async function withRetry(fn, retries = 3, baseDelayMs = 2000) {
 async function transcribeWithGroq(audioFilePath) {
   const groq = getGroqClient();
 
-  // Groq kiem tra extension cua filename trong multipart upload.
   const VALID_EXTENSIONS = ['.flac', '.mp3', '.mp4', '.mpeg', '.mpga', '.m4a', '.ogg', '.opus', '.wav', '.webm'];
   const extMatch = audioFilePath.match(/(\.[a-zA-Z0-9]+)(\?.*)?$/);
   const ext = extMatch ? extMatch[1].toLowerCase() : '';
@@ -124,25 +157,26 @@ async function transcribeWithGroq(audioFilePath) {
     ? audioFilePath.split(/[\\/]/).pop().split('?')[0]
     : 'audio.m4a';
 
-  // Tao stream ben trong retry de moi lan thu lai co mot stream moi
+  // FIX: Thêm withTimeout 25s cho Whisper (thường xong trong < 10s)
   return await withRetry(async () => {
-    // Groq SDK doc .name de set filename trong Content-Disposition cua multipart
     const fileStream = Object.assign(fs.createReadStream(audioFilePath), { name: safeFilename });
     try {
-      const transcription = await groq.audio.transcriptions.create({
-        file: fileStream,
-        model: 'whisper-large-v3',
-        language: 'vi',
-        response_format: 'text',
-        prompt:
-          'Đây là ghi âm người dùng liệt kê các khoản thu chi trong ngày. ' +
-          'Bỏ qua tiếng ồn nền và tiếng người khác. Tập trung vào giọng người nói chính. ' +
-          'Từ thường gặp: cành, nghìn, triệu, củ, lít, đồng, ' +
-          'ăn trưa, đổ xăng, mua sắm, lương, thưởng, chuyển khoản, cafe, grab.',
-      });
+      const transcription = await withTimeout(
+        groq.audio.transcriptions.create({
+          file: fileStream,
+          model: 'whisper-large-v3',
+          language: 'vi',
+          response_format: 'text',
+          prompt:
+            'Đây là ghi âm người dùng liệt kê các khoản thu chi trong ngày. ' +
+            'Bỏ qua tiếng ồn nền và tiếng người khác. Tập trung vào giọng người nói chính. ' +
+            'Từ thường gặp: cành, nghìn, triệu, củ, lít, đồng, ' +
+            'ăn trưa, đổ xăng, mua sắm, lương, thưởng, chuyển khoản, cafe, grab.',
+        }),
+        25000 // 25s — đủ cho Whisper, không chờ quá lâu
+      );
       return typeof transcription === 'string' ? transcription : (transcription?.text ?? '');
     } finally {
-      // Luon dong handle file tren Windows de co the xoa sau do
       fileStream.destroy();
     }
   });
@@ -152,7 +186,6 @@ async function transcribeWithGroq(audioFilePath) {
 
 /**
  * Dùng Gemini phân tích transcript text → danh sách giao dịch có cấu trúc.
- * Gemini chỉ xử lý text sạch (không có nhiễu) nên kết quả chính xác hơn nhiều.
  *
  * @param {string} transcript  Văn bản transcript từ Whisper
  * @returns {Promise<Array>}   Mảng giao dịch
@@ -185,16 +218,20 @@ LƯU Ý:
 - Bỏ qua hội thoại thừa, chỉ lấy thông tin tài chính.
 - VD: "Của chú hết bao nhiêu? Dạ 30 cành." → 1 expense amount=30000.`;
 
+  // FIX: Thêm withTimeout 40s cho Gemini text
   const response = await withRetry(() =>
-    ai.models.generateContent({
-      model: 'gemini-2.5-flash-lite',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema,
-        temperature: 0,
-      },
-    })
+    withTimeout(
+      ai.models.generateContent({
+        model: 'gemini-2.5-flash-lite',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema,
+          temperature: 0,
+        },
+      }),
+      40000
+    )
   );
 
   try {
@@ -209,17 +246,23 @@ LƯU Ý:
 
 /**
  * Phân tích hóa đơn từ hình ảnh.
- * Dùng Gemini 2.0/1.5 Flash vì nó có khả năng "nhìn" và hiểu bố cục hóa đơn rất tốt.
+ *
+ * FIX: Thêm kiểm tra file tồn tại trước khi đọc.
+ * FIX: Thêm withTimeout 50s (vision chậm hơn text do xử lý ảnh).
  *
  * @param {string} imagePath Đường dẫn file ảnh tạm trên server
  * @param {string} mimeType  Định dạng ảnh (vd: 'image/jpeg')
  * @returns {Promise<Array>} Danh sách giao dịch (thường là 1 cái tổng)
  */
 async function extractTransactionFromReceipt(imagePath, mimeType = 'image/jpeg') {
+  // FIX: Kiểm tra file tồn tại trước — tránh crash khi file bị xóa sớm
+  if (!fs.existsSync(imagePath)) {
+    throw new Error(`File ảnh không tồn tại: ${imagePath}`);
+  }
+
   const ai = getGeminiClient();
   const today = getVnNow();
 
-  // 1. Chuyển ảnh thành Base64 để Gemini đọc được
   const imageBuffer = fs.readFileSync(imagePath);
   const base64Image = imageBuffer.toString('base64');
 
@@ -237,24 +280,28 @@ LƯU Ý:
 - Chỉ lấy 1 giao dịch tổng cộng của cả hóa đơn.
 - Nếu ảnh mờ hoặc không phải hóa đơn → trả về [].`;
 
+  // FIX: withTimeout 50s cho vision (nặng hơn text)
   const response = await withRetry(() =>
-    ai.models.generateContent({
-      model: 'gemini-2.5-flash', //
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { inlineData: { data: base64Image, mimeType } },
-            { text: prompt },
-          ],
+    withTimeout(
+      ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { inlineData: { data: base64Image, mimeType } },
+              { text: prompt },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema,
+          temperature: 0,
         },
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema,
-        temperature: 0,
-      },
-    })
+      }),
+      50000
+    )
   );
 
   try {
@@ -265,14 +312,34 @@ LƯU Ý:
   }
 }
 
+// ─── Helpers dọn dẹp file ────────────────────────────────────────────────────
+
+/**
+ * FIX: Tách hàm xóa file thành helper riêng để tái sử dụng,
+ * tránh lặp code giữa transcribeTransactions và scanReceipt.
+ */
+function cleanupFile(filePath) {
+  if (filePath && fs.existsSync(filePath)) {
+    try {
+      fs.unlinkSync(filePath);
+      console.log(`[aiService] Đã xóa file tạm: ${filePath}`);
+    } catch (err) {
+      console.error(`[aiService] Không thể xóa file tạm: ${filePath}`, err.message);
+    }
+  }
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export const aiService = {
   /**
    * Pipeline 2 bước: Audio → Groq Whisper → text → Gemini → transactions[]
    *
+   * FIX: Log rõ từng bước để dễ debug khi mạng kém.
+   * FIX: Dùng cleanupFile helper thay vì lặp code.
+   *
    * @param {string} audioFilePath  Đường dẫn file âm thanh
-   * @param {string} mimeType       Giữ lại để tương thích với code cũ (không dùng nữa)
+   * @param {string} mimeType       Giữ lại để tương thích (không dùng nữa)
    * @returns {Promise<Array>}      Danh sách giao dịch
    */
   async transcribeTransactions(audioFilePath, mimeType) {
@@ -291,15 +358,7 @@ export const aiService = {
       console.log('[aiService] Kết quả:', transactions);
       return transactions;
     } finally {
-      // Dọn dẹp file tạm ngay sau khi xử lý xong (Fix Disk Leak)
-      if (audioFilePath && fs.existsSync(audioFilePath)) {
-        try {
-          fs.unlinkSync(audioFilePath);
-          console.log(`[aiService] Đã xóa file tạm: ${audioFilePath}`);
-        } catch (err) {
-          console.error(`[aiService] Không thể xóa file tạm: ${audioFilePath}`, err.message);
-        }
-      }
+      cleanupFile(audioFilePath);
     }
   },
 
@@ -317,15 +376,7 @@ export const aiService = {
       console.log('[aiService] Kết quả quét:', transactions);
       return transactions;
     } finally {
-      // Dọn dẹp file tạm ngay sau khi xử lý xong
-      if (imagePath && fs.existsSync(imagePath)) {
-        try {
-          fs.unlinkSync(imagePath);
-          console.log(`[aiService] Đã xóa file ảnh tạm: ${imagePath}`);
-        } catch (err) {
-          console.error(`[aiService] Không thể xóa file ảnh tạm: ${imagePath}`, err.message);
-        }
-      }
+      cleanupFile(imagePath);
     }
   },
 

@@ -69,6 +69,11 @@ export async function listTransactions(userId, filters = {}, executor = query) {
     params.type = filters.type;
   }
 
+  if (Array.isArray(filters.ids) && filters.ids.length > 0) {
+    conditions.push('id IN (:ids)');
+    params.ids = filters.ids;
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const rows = await execute(
     executor,
@@ -212,3 +217,68 @@ export async function deleteTransaction(userId, id) {
     });
   });
 }
+
+/**
+ * FIX: Thêm Batch API xử lý hàng loạt giao dịch từ AI scan.
+ * Giảm số lượng request HTTP và đảm bảo tính toàn vẹn (tất cả thành công hoặc thất bại).
+ */
+export async function createTransactionsBatch(userId, transactionsPayload) {
+  if (!Array.isArray(transactionsPayload) || transactionsPayload.length === 0) {
+    return [];
+  }
+
+  const results = [];
+
+  return await withTransaction(async (connection) => {
+    for (const payload of transactionsPayload) {
+      const id = payload.id ?? randomUUID();
+      const createdAt = toMysqlDateTime(payload.createdAt ?? new Date());
+      const transaction = {
+        ...payload,
+        id,
+        note: payload.note ?? '',
+        createdAt,
+        date: toMysqlDateTime(payload.date),
+      };
+
+      // 1. Kiểm tra ví tồn tại
+      await assertTransactionWallets(connection, userId, transaction);
+
+      // 2. Insert giao dịch
+      await execute(
+        connection,
+        `
+          INSERT INTO transactions (
+            id, user_id, type, amount, category_id,
+            wallet_id, to_wallet_id, note, transaction_date, created_at
+          )
+          VALUES (
+            :id, :userId, :type, :amount, :categoryId,
+            :walletId, :toWalletId, :note, :date, :createdAt
+          )
+        `,
+        {
+          id: transaction.id,
+          userId,
+          type: transaction.type,
+          amount: transaction.amount,
+          categoryId: transaction.categoryId,
+          walletId: transaction.walletId,
+          toWalletId: transaction.toWalletId ?? null,
+          note: transaction.note,
+          date: transaction.date,
+          createdAt: transaction.createdAt,
+        }
+      );
+
+      // 3. Cập nhật số dư ví
+      await applyTransactionEffect(connection, userId, transaction, 1);
+      
+      results.push(transaction.id);
+    }
+
+    // Trả về danh sách đầy đủ sau khi đã commit thành công
+    return await listTransactions(userId, { ids: results }, connection);
+  });
+}
+

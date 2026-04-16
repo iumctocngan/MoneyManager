@@ -262,17 +262,22 @@ export const useStore = create<InternalState>()(
         const token = requireToken(get());
         set({ isBusy: true });
         try {
-          for (const tx of transactions) {
-            await api.createTransaction(token, tx);
-          }
+          await api.createTransactionsBatch(token, transactions);
           await get().refreshState();
         } finally {
           set({ isBusy: false });
         }
       },
 
-      updateTransaction: async () => {
-        throw new Error('Tinh nang chinh sua giao dich chua duoc noi vao frontend.');
+      updateTransaction: async (id, transaction) => {
+        const token = requireToken(get());
+        set({ isBusy: true });
+        try {
+          await api.updateTransaction(token, id, transaction);
+          await get().refreshState();
+        } finally {
+          set({ isBusy: false });
+        }
       },
 
       deleteTransaction: async (id) => {

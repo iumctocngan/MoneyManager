@@ -110,12 +110,25 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   if (!response.ok) {
-    throw new ApiError(
-      payload?.message || 'Yeu cau den backend that bai.',
-      response.status
-    );
+    // Standard error envelope: { success: false, error: { message, details } }
+    const errorMessage =
+      payload?.error?.message || payload?.message || 'Yeu cau den backend that bai.';
+    throw new ApiError(errorMessage, response.status);
   }
 
+  // Standard success envelope: { success: true, data: T }
+  if (payload && typeof payload === 'object' && 'success' in payload) {
+    if (payload.success) {
+      return payload.data as T;
+    } else {
+      throw new ApiError(
+        payload.error?.message || 'Yeu cau den backend that bai.',
+        response.status
+      );
+    }
+  }
+
+  // Fallback for non-enveloped responses (though we aim to eliminate these)
   return payload as T;
 }
 
@@ -172,6 +185,20 @@ export const api = {
       body: transaction,
     });
   },
+  createTransactionsBatch(token: string, transactions: Partial<Transaction>[]) {
+    return request<Transaction[]>('/api/transactions/batch', {
+      method: 'POST',
+      token,
+      body: transactions,
+    });
+  },
+  updateTransaction(token: string, id: string, payload: Partial<Transaction>) {
+    return request<Transaction>(`/api/transactions/${id}`, {
+      method: 'PATCH',
+      token,
+      body: payload,
+    });
+  },
   deleteTransaction(token: string, id: string) {
     return request<void>(`/api/transactions/${id}`, {
       method: 'DELETE',
@@ -214,16 +241,20 @@ export const api = {
         }
       );
 
-      if (response.status !== 200) {
-        let msg = 'Failed to transcribe audio';
-        try {
-          const errorJson = JSON.parse(response.body);
-          msg = errorJson.message || errorJson.error?.message || msg;
-        } catch {}
+      const isOk = response.status >= 200 && response.status < 300;
+      let payload: any = null;
+      try {
+        payload = JSON.parse(response.body);
+      } catch {
+        payload = { message: response.body };
+      }
+
+      if (!isOk) {
+        const msg = payload?.error?.message || payload?.message || 'Failed to transcribe audio';
         throw new ApiError(msg, response.status);
       }
 
-      return JSON.parse(response.body) as Partial<Transaction>[];
+      return (payload && payload.success ? payload.data : payload) as Partial<Transaction>[];
     } catch (e: any) {
       if (e instanceof ApiError) throw e;
       throw new ApiError(e.message || 'Network request failed', 0);
@@ -246,16 +277,20 @@ export const api = {
         }
       );
 
-      if (response.status !== 200) {
-        let msg = 'Failed to scan receipt';
-        try {
-          const errorJson = JSON.parse(response.body);
-          msg = errorJson.message || errorJson.error?.message || msg;
-        } catch {}
+      const isOk = response.status >= 200 && response.status < 300;
+      let payload: any = null;
+      try {
+        payload = JSON.parse(response.body);
+      } catch {
+        payload = { message: response.body };
+      }
+
+      if (!isOk) {
+        const msg = payload?.error?.message || payload?.message || 'Failed to scan receipt';
         throw new ApiError(msg, response.status);
       }
 
-      return JSON.parse(response.body) as Partial<Transaction>[];
+      return (payload && payload.success ? payload.data : payload) as Partial<Transaction>[];
     } catch (e: any) {
       if (e instanceof ApiError) throw e;
       throw new ApiError(e.message || 'Network request failed', 0);

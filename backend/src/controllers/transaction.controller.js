@@ -1,4 +1,5 @@
 import * as transactionService from '../services/transaction.service.js';
+import { sendSuccess } from '../utils/response.js';
 import { normalizeTransactionPayload } from '../utils/validators.js';
 
 export const listTransactions = async (request, response) => {
@@ -12,25 +13,43 @@ export const listTransactions = async (request, response) => {
     filters.type = request.query.type.trim();
   }
 
-  response.json(await transactionService.listTransactions(request.auth.userId, filters));
+  sendSuccess(response, await transactionService.listTransactions(request.auth.userId, filters));
 };
 
 export const getTransactionById = async (request, response) => {
   const transaction = await transactionService.getTransactionById(request.auth.userId, request.params.id);
 
   if (!transaction) {
-    response.status(404).json({ message: 'Transaction not found.' });
+    response.status(404).json({
+      success: false,
+      error: { message: 'Transaction not found.' }
+    });
     return;
   }
 
-  response.json(transaction);
+  sendSuccess(response, transaction);
 };
 
 export const createTransaction = async (request, response) => {
   const payload = normalizeTransactionPayload(request.body);
   const transaction = await transactionService.createTransaction(request.auth.userId, payload);
-  response.status(201).json(transaction);
+  sendSuccess(response, transaction, 201);
 };
+
+export const createTransactionsBatch = async (request, response) => {
+  if (!Array.isArray(request.body)) {
+    response.status(400).json({
+      success: false,
+      error: { message: 'Request body must be an array of transactions.' }
+    });
+    return;
+  }
+
+  const payloads = request.body.map((item) => normalizeTransactionPayload(item));
+  const transactions = await transactionService.createTransactionsBatch(request.auth.userId, payloads);
+  sendSuccess(response, transactions, 201);
+};
+
 
 export const updateTransaction = async (request, response) => {
   const payload = normalizeTransactionPayload(request.body, { partial: true });
@@ -40,7 +59,7 @@ export const updateTransaction = async (request, response) => {
     payload,
     (body) => normalizeTransactionPayload(body)
   );
-  response.json(transaction);
+  sendSuccess(response, transaction);
 };
 
 export const deleteTransaction = async (request, response) => {

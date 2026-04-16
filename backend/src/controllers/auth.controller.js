@@ -1,20 +1,16 @@
-import { loginUser, registerUser } from '../services/auth.service.js';
-import {
-  normalizeLoginPayload,
-  normalizeRegisterPayload,
-} from '../utils/validators.js';
+import { sendSuccess } from '../utils/response.js';
 
 export const register = async (request, response) => {
   const payload = normalizeRegisterPayload(request.body);
   const result = await registerUser(payload);
-  response.status(201).json(result);
+  sendSuccess(response, result, 201);
 };
 
 export const login = async (request, response) => {
   const payload = normalizeLoginPayload(request.body);
-  response.json(await loginUser(payload));
+  sendSuccess(response, await loginUser(payload));
 };
 
 export const me = async (request, response) => {
-  response.json({ user: request.user });
+  sendSuccess(response, { user: request.user });
 };
