@@ -29,6 +29,7 @@ export function errorHandler(error, request, response, next) {
     response,
     error.message || 'Internal server error.',
     statusCode,
+    null,
     error instanceof HttpError ? error.details : null
   );
 }

@@ -10,11 +10,7 @@ export const getWalletById = async (request, response) => {
   const wallet = await walletService.getWalletById(request.auth.userId, request.params.id);
 
   if (!wallet) {
-    response.status(404).json({
-      success: false,
-      error: { message: 'Wallet not found.' }
-    });
-    return;
+    return sendError(response, 'Wallet not found.', 404);
   }
 
   sendSuccess(response, wallet);
@@ -34,5 +30,5 @@ export const updateWallet = async (request, response) => {
 
 export const deleteWallet = async (request, response) => {
   await walletService.deleteWallet(request.auth.userId, request.params.id);
-  response.status(204).send();
+  sendSuccess(response, null);
 };

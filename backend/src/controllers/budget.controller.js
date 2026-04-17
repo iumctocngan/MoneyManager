@@ -1,5 +1,5 @@
 import * as budgetService from '../services/budget.service.js';
-import { sendSuccess } from '../utils/response.js';
+import { sendSuccess, sendError } from '../utils/response.js';
 import { normalizeBudgetPayload } from '../utils/validators.js';
 
 export const listBudgets = async (request, response) => {
@@ -10,11 +10,7 @@ export const getBudgetById = async (request, response) => {
   const budget = await budgetService.getBudgetById(request.auth.userId, request.params.id);
 
   if (!budget) {
-    response.status(404).json({
-      success: false,
-      error: { message: 'Budget not found.' }
-    });
-    return;
+    return sendError(response, 'Budget not found.', 404);
   }
 
   sendSuccess(response, budget);
@@ -39,5 +35,5 @@ export const updateBudget = async (request, response) => {
 
 export const deleteBudget = async (request, response) => {
   await budgetService.deleteBudget(request.auth.userId, request.params.id);
-  response.status(204).send();
+  sendSuccess(response, null);
 };

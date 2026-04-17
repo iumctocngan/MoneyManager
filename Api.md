@@ -94,9 +94,8 @@ All responses follow a consistent JSON envelope.
 
 | Code | Meaning | Usage |
 |------|---------|-------|
-| 200 | OK | Successful GET, PUT, PATCH |
+| 200 | OK | Successful GET, PUT, PATCH, DELETE |
 | 201 | Created | Successful POST (Creation) |
-| 204 | No Content | Successful DELETE |
 | 400 | Bad Request | Validation error or invalid payload |
 | 401 | Unauthorized | Missing or invalid token |
 | 403 | Forbidden | Accessing resource not owned by user |

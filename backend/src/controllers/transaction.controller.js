@@ -1,5 +1,5 @@
 import * as transactionService from '../services/transaction.service.js';
-import { sendSuccess } from '../utils/response.js';
+import { sendSuccess, sendError } from '../utils/response.js';
 import { normalizeTransactionPayload } from '../utils/validators.js';
 
 export const listTransactions = async (request, response) => {
@@ -20,11 +20,7 @@ export const getTransactionById = async (request, response) => {
   const transaction = await transactionService.getTransactionById(request.auth.userId, request.params.id);
 
   if (!transaction) {
-    response.status(404).json({
-      success: false,
-      error: { message: 'Transaction not found.' }
-    });
-    return;
+    return sendError(response, 'Transaction not found.', 404);
   }
 
   sendSuccess(response, transaction);
@@ -38,11 +34,7 @@ export const createTransaction = async (request, response) => {
 
 export const createTransactionsBatch = async (request, response) => {
   if (!Array.isArray(request.body)) {
-    response.status(400).json({
-      success: false,
-      error: { message: 'Request body must be an array of transactions.' }
-    });
-    return;
+    return sendError(response, 'Request body must be an array of transactions.', 400);
   }
 
   const payloads = request.body.map((item) => normalizeTransactionPayload(item));
@@ -64,5 +56,5 @@ export const updateTransaction = async (request, response) => {
 
 export const deleteTransaction = async (request, response) => {
   await transactionService.deleteTransaction(request.auth.userId, request.params.id);
-  response.status(204).send();
+  sendSuccess(response, null);
 };
