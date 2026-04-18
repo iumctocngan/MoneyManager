@@ -1,5 +1,5 @@
 import * as walletService from '../services/wallet.service.js';
-import { sendSuccess } from '../utils/response.js';
+import { sendSuccess, sendError } from '../utils/response.js';
 import { normalizeWalletPayload } from '../utils/validators.js';
 
 export const listWallets = async (request, response) => {

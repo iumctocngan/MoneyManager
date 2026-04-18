@@ -1,4 +1,6 @@
 import { sendSuccess } from '../utils/response.js';
+import { normalizeRegisterPayload, normalizeLoginPayload } from '../utils/validators.js';
+import { registerUser, loginUser } from '../services/auth.service.js';
 
 export const register = async (request, response) => {
   const payload = normalizeRegisterPayload(request.body);
