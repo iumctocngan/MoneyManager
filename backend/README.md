@@ -23,6 +23,7 @@ Cấu hình các biến chính:
 - `DB_*`: Thông tin kết nối MySQL
 - `AUTH_TOKEN_SECRET`: Chuỗi bí mật ký JWT (Rất quan trọng)
 - `GEMINI_API_KEY`: Key cho Google Generative AI (nếu dùng tính năng AI)
+- `GROQ_API_KEY`: Key cho Groq AI (nếu dùng Groq SDK)
 
 ## 4. Cài đặt và Chạy
 ```bash

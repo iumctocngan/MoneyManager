@@ -20,7 +20,7 @@ npm run install:all
 ## 4. Cấu hình biến môi trường (.env)
 1. Trong thư mục `backend/`, copy file `.env.example` thành `.env`.
 2. Cập nhật thông tin kết nối Database (`DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`).
-3. (Tùy chọn) Gán `GEMINI_API_KEY` nếu dùng AI.
+3. (Tùy chọn) Gán `GEMINI_API_KEY` hoặc `GROQ_API_KEY` nếu dùng AI.
 
 ## 5. Chạy dự án (Từ thư mục gốc)
 
