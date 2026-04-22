@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useStore } from '@/store/app-store';
+import { initializeNotifications } from '@/utils/push-notifications';
 
 export default function RootLayout() {
   const isHydrated = useStore((state) => state.isHydrated);
@@ -16,6 +17,12 @@ export default function RootLayout() {
       void initializeApp();
     }
   }, [initializeApp, isHydrated, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      void initializeNotifications();
+    }
+  }, [isInitialized]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -55,6 +62,13 @@ export default function RootLayout() {
             name="budget/add"
             options={{
               presentation: 'modal',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="notifications"
+            options={{
+              presentation: 'card',
               headerShown: false,
             }}
           />

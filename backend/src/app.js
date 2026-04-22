@@ -7,6 +7,7 @@ import { requireAuth } from './middleware/require-auth.js';
 import authRoutes from './routes/auth.routes.js';
 import healthRoutes from './routes/health.routes.js';
 import apiRoutes from './routes/index.js';
+import { sendSuccess } from './utils/response.js';
 
 const app = express();
 
@@ -20,7 +21,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 
 app.get('/', (request, response) => {
-  response.json({
+  sendSuccess(response, {
     name: 'Money Manager API',
     version: '1.0.0',
     docs: '/health, /api/auth/*, and protected /api/*',

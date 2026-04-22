@@ -74,9 +74,12 @@ All responses follow a consistent JSON envelope.
 - `DELETE /api/transactions/:id`: Delete a transaction.
 
 ### Budgets
-- `GET /api/budgets/stats`: Get budget progress (planned).
+- `GET /api/budgets`: List all budgets.
+- `GET /api/budgets/:id`: Get a specific budget.
 - `POST /api/budgets`: Create a new budget.
+- `PATCH /api/budgets/:id`: Update an existing budget.
 - `DELETE /api/budgets/:id`: Delete a budget.
+- `GET /api/budgets/stats`: Get budget progress (planned).
 
 ### State & Settings
 - `GET /api/state`: Get full app state snapshot (wallets, transactions, budgets, settings).
@@ -87,6 +90,9 @@ All responses follow a consistent JSON envelope.
 ### AI (Gemini)
 - `POST /api/ai/transcribe`: Upload audio and extract transactions.
 - `POST /api/ai/scan-receipt`: Upload image and extract transactions.
+
+### System
+- `GET /health`: Check API and database connectivity status.
 
 ---
 

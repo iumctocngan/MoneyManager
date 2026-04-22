@@ -69,3 +69,20 @@ export interface AppSnapshot {
   budgets: Budget[];
   settings: AppSettings;
 }
+
+export type NotificationType =
+  | 'budget_warning'
+  | 'budget_exceeded'
+  | 'no_activity'
+  | 'saving_good';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  icon: string;
+  color: string;
+  timestamp: string;
+  budgetId?: string;
+}

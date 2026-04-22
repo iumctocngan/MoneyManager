@@ -4,6 +4,7 @@ import { SectionHeading, SoftBackdrop, SoftCard } from '@/components/ui/soft';
 import { Colors , SoftColors, shadow } from '@/constants/design';
 
 import { filterTransactionsByPeriod, generateFinancialReport } from '@/services/report.service';
+import { generateNotifications } from '@/services/notification.service';
 import { useStore } from '@/store/app-store';
 import { Wallet, Transaction } from '@/constants/types';
 
@@ -24,9 +25,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
-  const { wallets, transactions, getTotalBalance, getCategoryById, settings, refreshState, user } = useStore();
+  const { wallets, transactions, budgets, getTotalBalance, getCategoryById, settings, refreshState, user } = useStore();
   const [showBalance, setShowBalance] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const notificationCount = useMemo(
+    () => generateNotifications(budgets, transactions, getCategoryById).length,
+    [budgets, transactions, getCategoryById]
+  );
 
 
 
@@ -111,10 +117,10 @@ export default function HomeScreen() {
             <TouchableOpacity
               activeOpacity={0.85}
               style={styles.headerIcon}
-              onPress={() => router.push('/tabs/more')}
+              onPress={() => router.push('/notifications' as any)}
             >
               <Ionicons name="notifications-outline" size={20} color={SoftColors.text} />
-              <View style={styles.dot} />
+              {notificationCount > 0 && <View style={styles.dot} />}
             </TouchableOpacity>
           </View>
 
