@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   name VARCHAR(100) NOT NULL,
   last_login_at DATETIME NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS app_settings (
@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS app_settings (
   first_day_of_month TINYINT UNSIGNED NOT NULL DEFAULT 1,
   show_balance BOOLEAN NOT NULL DEFAULT TRUE,
   biometric_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_app_settings_user
     FOREIGN KEY (user_id) REFERENCES users(id)
     ON DELETE CASCADE
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS wallets (
   icon VARCHAR(32) NOT NULL,
   include_in_total BOOLEAN NOT NULL DEFAULT TRUE,
   created_at DATETIME NOT NULL,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_wallets_user
     FOREIGN KEY (user_id) REFERENCES users(id)
     ON DELETE CASCADE
@@ -49,12 +49,12 @@ CREATE TABLE IF NOT EXISTS budgets (
   user_id VARCHAR(64) NOT NULL,
   category_id VARCHAR(64) NOT NULL,
   amount DECIMAL(15, 0) NOT NULL,
-  period ENUM('monthly', 'weekly', 'yearly') NOT NULL,
+  period ENUM('monthly', 'weekly', 'yearly') NOT NULL DEFAULT 'monthly',
   start_date DATETIME NOT NULL,
   end_date DATETIME NOT NULL,
   wallet_id VARCHAR(64) NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_budgets_user
     FOREIGN KEY (user_id) REFERENCES users(id)
     ON DELETE CASCADE,
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   note TEXT NULL,
   transaction_date DATETIME NOT NULL,
   created_at DATETIME NOT NULL,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_transactions_user
     FOREIGN KEY (user_id) REFERENCES users(id)
     ON DELETE CASCADE,
@@ -86,22 +86,43 @@ CREATE TABLE IF NOT EXISTS transactions (
     ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS chat_sessions (
+  id VARCHAR(64) NOT NULL PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_chat_sessions_user
+    FOREIGN KEY (user_id) REFERENCES users(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id VARCHAR(64) NOT NULL PRIMARY KEY,
+  session_id VARCHAR(64) NOT NULL,
+  role ENUM('user', 'assistant') NOT NULL,
+  content MEDIUMTEXT NOT NULL,
+  file_uri TEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_chat_messages_session
+    FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Wallets
 CREATE INDEX idx_wallets_user_id ON wallets (user_id);
 
 -- Transactions
--- Optimized for listing/sorting by date per user
 CREATE INDEX idx_transactions_user_date ON transactions (user_id, transaction_date, created_at);
--- Covering index for reporting and budget spent calculations
 CREATE INDEX idx_transactions_reporting ON transactions (user_id, category_id, type, transaction_date, amount);
--- Still valuable for single-wallet history lookups
 CREATE INDEX idx_transactions_wallet_id ON transactions (wallet_id);
 CREATE INDEX idx_transactions_to_wallet_id ON transactions (to_wallet_id);
 
+-- Chat
+CREATE INDEX idx_chat_sessions_user_created ON chat_sessions (user_id, created_at);
+CREATE INDEX idx_chat_messages_session_created ON chat_messages (session_id, created_at);
+
 -- Budgets
--- Quick lookup by user and category
 CREATE INDEX idx_budgets_user_category ON budgets (user_id, category_id);
--- Help in finding budgets for specific period
 CREATE INDEX idx_budgets_time_range ON budgets (user_id, start_date, end_date);
--- Useful for wallet-specific budget views
 CREATE INDEX idx_budgets_wallet_id ON budgets (wallet_id);

@@ -3,7 +3,7 @@ import { execute, query, withTransaction } from '../config/database.js';
 import { toMysqlDateTime } from '../utils/datetime.js';
 import { HttpError } from '../utils/http-error.js';
 import { mapTransaction } from '../utils/serializers.js';
-import { assertWalletExists, adjustWalletBalance } from './wallet.service.js';
+import { adjustWalletBalance, assertWalletExists } from './wallet.service.js';
 
 const TRANSACTION_SELECT = `
   SELECT
@@ -273,7 +273,7 @@ export async function createTransactionsBatch(userId, transactionsPayload) {
 
       // 3. Cập nhật số dư ví
       await applyTransactionEffect(connection, userId, transaction, 1);
-      
+
       results.push(transaction.id);
     }
 
@@ -281,4 +281,3 @@ export async function createTransactionsBatch(userId, transactionsPayload) {
     return await listTransactions(userId, { ids: results }, connection);
   });
 }
-

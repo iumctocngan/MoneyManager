@@ -38,4 +38,8 @@ export const env = {
     password: getString('DB_PASSWORD', ''),
     database: getString('DB_NAME', 'money_manager'),
   },
+  ai: {
+    geminiKey: getString('GEMINI_API_KEY'),
+    groqKey: getString('GROQ_API_KEY'),
+  },
 };
