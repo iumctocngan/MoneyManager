@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useStore } from '@/store/app-store';
+import { useMutations } from '@/hooks/useMutations';
 import { Colors, SoftColors, shadow } from '@/constants/design';
 import { SoftBackdrop, SoftCard } from '@/components/ui/soft';
 import { formatCurrency, formatDateFull } from '@/utils';
@@ -12,7 +13,8 @@ import { getCategoryIconName, getWalletIconName } from '@/utils/iconography';
 
 export default function TransactionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { transactions, wallets, getCategoryById, deleteTransaction } = useStore();
+  const { transactions, wallets, getCategoryById } = useStore();
+  const { deleteTransaction } = useMutations();
 
   const transaction = transactions.find((item) => item.id === id);
 

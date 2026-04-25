@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useStore } from '@/store/app-store';
+import { useMutations } from '@/hooks/useMutations';
 import { Colors, SoftColors, shadow } from '@/constants/design';
 
 import { SoftBackdrop, SoftCard } from '@/components/ui/soft';
@@ -15,7 +16,8 @@ import { TransactionItem } from '@/components/TransactionItem';
 
 export default function WalletDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { wallets, transactions, getCategoryById, deleteWallet, settings } = useStore();
+  const { wallets, transactions, getCategoryById, settings } = useStore();
+  const { deleteWallet } = useMutations();
 
   const wallet = wallets.find((item) => item.id === id);
 
@@ -259,42 +261,6 @@ const styles = StyleSheet.create({
   listCard: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-  },
-  transactionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(174, 213, 188, 0.26)',
-  },
-  transactionRowLast: {
-    borderBottomWidth: 0,
-  },
-  transactionIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  transactionBody: {
-    flex: 1,
-  },
-  transactionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: SoftColors.text,
-    marginBottom: 4,
-  },
-  transactionMeta: {
-    fontSize: 12,
-    color: SoftColors.muted,
-  },
-  transactionAmount: {
-    marginLeft: 12,
-    fontSize: 15,
-    fontWeight: '800',
   },
   emptyState: {
     alignItems: 'center',

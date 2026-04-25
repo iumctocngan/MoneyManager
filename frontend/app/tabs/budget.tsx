@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useStore } from '@/store/app-store';
+import { useMutations } from '@/hooks/useMutations';
 import { Colors , SoftColors, shadow } from '@/constants/design';
 
 import { GlowButton, SoftBackdrop, SoftCard } from '@/components/ui/soft';
@@ -11,7 +12,8 @@ import { formatCurrency } from '@/utils';
 import { getCategoryIconName } from '@/utils/iconography';
 
 export default function BudgetScreen() {
-  const { budgets, transactions, deleteBudget, getCategoryById } = useStore();
+  const { budgets, transactions, getCategoryById } = useStore();
+  const { deleteBudget } = useMutations();
 
   const budgetsWithProgress = useMemo(
     () =>
@@ -178,9 +180,27 @@ export default function BudgetScreen() {
                     </View>
                   </View>
 
-                  <TouchableOpacity style={styles.deleteButton} onPress={() => confirmDelete(budget.id)} activeOpacity={0.8}>
-                    <Ionicons name="trash-outline" size={16} color={SoftColors.muted} />
-                  </TouchableOpacity>
+                  <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/budget/edit',
+                          params: { id: budget.id },
+                        } as any)
+                      }
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="create-outline" size={16} color={SoftColors.muted} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => confirmDelete(budget.id)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="trash-outline" size={16} color={SoftColors.muted} />
+                    </TouchableOpacity>
+                  </View>
                 </SoftCard>
               );
             })
@@ -343,9 +363,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
   },
-  deleteButton: {
+  actionsRow: {
     alignSelf: 'flex-end',
+    flexDirection: 'row',
+    gap: 12,
     marginTop: 12,
+  },
+  actionButton: {
+    padding: 2,
   },
   emptyCard: {
     paddingVertical: 34,

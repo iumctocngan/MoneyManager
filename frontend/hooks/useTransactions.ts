@@ -3,7 +3,7 @@ import { useStore } from '@/store/app-store';
 
 
 export function useMonthTransactions(year: number, month: number, walletId?: string | null) {
-  const { transactions, getCategoryById, wallets, settings } = useStore();
+  const { transactions, getCategoryById } = useStore();
 
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
@@ -61,7 +61,7 @@ export function useMonthTransactions(year: number, month: number, walletId?: str
 }
 
 export function useWalletStats(walletId: string) {
-  const { transactions, wallets, settings } = useStore();
+  const { transactions, wallets } = useStore();
   const wallet = wallets.find(w => w.id === walletId);
 
   const walletTxs = useMemo(

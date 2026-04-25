@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useStore } from '@/store/app-store';
+import { useMutations } from '@/hooks/useMutations';
 import { SoftColors } from '@/constants/design';
 import { GlowButton, SoftBackdrop, SoftCard, softInputStyles } from '@/components/ui/soft';
 import { formatNumber } from '@/utils';
@@ -19,7 +20,8 @@ import { getWalletIconName } from '@/utils/iconography';
 
 export default function TransferMoneyScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
-  const { wallets, transferMoney } = useStore();
+  const { wallets } = useStore();
+  const { transferMoney } = useMutations();
 
   const [fromWalletId] = useState(from || wallets[0]?.id || '');
   const [toWalletId, setToWalletId] = useState(wallets.filter(w => w.id !== fromWalletId)[0]?.id || '');

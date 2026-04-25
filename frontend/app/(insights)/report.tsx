@@ -5,12 +5,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '@/store/app-store';
 import { Colors, SoftColors } from '@/constants/design';
-
-
 import { DonutChart } from '@/components/ui/donut-chart';
 import { formatCurrency } from '@/utils';
 import { getCategoryIconName } from '@/utils/iconography';
-import { generateFinancialReport } from '@/services/report.service';
+import {
+  buildDonutChartModel,
+  generateFinancialReport,
+} from '@/services/report.service';
 
 type Tab = 'expense' | 'income';
 
@@ -19,49 +20,30 @@ export default function ReportScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('expense');
   const { transactions, getCategoryById } = useStore();
 
-
-
-  const PERIOD_LABELS = {
+  const periodLabels = {
     today: 'Hôm nay',
     week: 'Tuần này',
     month: 'Tháng này',
     quarter: 'Quý này',
     year: 'Năm nay',
   };
-  const periodLabel = PERIOD_LABELS[period as keyof typeof PERIOD_LABELS] || 'Tháng này';
+  const periodLabel = periodLabels[period as keyof typeof periodLabels] || 'Tháng này';
 
-  const {
-    totalAmount,
-    categoryBreakdown,
-    top4Cats,
-    othersAmount,
-    realTotal
-  } = useMemo(() => {
-    const txConverter = (tx: { walletId: string; amount: number }) => tx.amount;
-    return generateFinancialReport(transactions, period, activeTab, txConverter);
+  const { totalAmount, categoryBreakdown, top4Cats, othersAmount, realTotal } = useMemo(() => {
+    return generateFinancialReport(transactions, period, activeTab);
   }, [transactions, period, activeTab]);
 
-  // Use expense/income colors. Provide some generic backups visually mapping the screenshots
-  const EXPENSE_COLORS = ['#FAD02C', Colors.expense, SoftColors.mint, SoftColors.purple];
-  const INCOME_COLORS = [Colors.income, '#FFC08A', '#4EAFFF', '#C8A4FF'];
-  const COLORS = activeTab === 'expense' ? EXPENSE_COLORS : INCOME_COLORS;
-
-  const donutData = top4Cats.map((item, idx) => ({
-    percentage: item.amount / realTotal,
-    color: COLORS[idx % COLORS.length]
-  }));
-
-  if (othersAmount > 0) {
-    donutData.push({
-      percentage: othersAmount / realTotal,
-      color: 'rgba(174, 213, 188, 0.4)' // Soft neutral color
-    });
-  }
+  const expenseColors = ['#FAD02C', Colors.expense, SoftColors.mint, SoftColors.purple];
+  const incomeColors = [Colors.income, '#FFC08A', '#4EAFFF', '#C8A4FF'];
+  const chartColors = activeTab === 'expense' ? expenseColors : incomeColors;
+  const donutModel = useMemo(
+    () => buildDonutChartModel(top4Cats, othersAmount, realTotal, chartColors),
+    [top4Cats, othersAmount, realTotal, chartColors]
+  );
 
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.container} edges={['top']}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={SoftColors.text} />
@@ -70,7 +52,6 @@ export default function ReportScreen() {
           <View style={{ width: 40 }} />
         </View>
 
-        {/* Tabs */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'expense' && styles.tabButtonActive]}
@@ -93,56 +74,55 @@ export default function ReportScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-          {/* Top Total */}
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Tổng {activeTab === 'expense' ? 'chi' : 'thu'}</Text>
             <Text style={styles.totalAmount}>{formatCurrency(totalAmount)}</Text>
           </View>
 
-          {/* Donut and Legend */}
           <View style={styles.chartArea}>
             <View style={styles.donutWrapper}>
-              <DonutChart data={donutData} size={110} strokeWidth={24} />
+              <DonutChart data={donutModel.data} size={110} strokeWidth={24} />
             </View>
             <View style={styles.legendWrapper}>
-              {top4Cats.map((item, index) => {
-                const cat = getCategoryById(item.id);
-                const p = ((item.amount / realTotal) * 100).toFixed(2).replace('.', ',');
+              {donutModel.legendItems.map((item) => {
+                const cat = item.isOther ? null : getCategoryById(item.id);
+                const percentage = item.percentage.toFixed(2).replace('.', ',');
                 return (
                   <View style={styles.legendRow} key={item.id}>
-                    <View style={[styles.legendDot, { backgroundColor: COLORS[index % COLORS.length] }]} />
-                    <Text style={styles.legendLabel} numberOfLines={1}>{cat?.name || 'Các khoản còn lại'}</Text>
-                    <Text style={styles.legendPercent}>{p} %</Text>
+                    <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                    <Text style={styles.legendLabel} numberOfLines={1}>
+                      {cat?.name || 'Các khoản còn lại'}
+                    </Text>
+                    <Text style={styles.legendPercent}>{percentage} %</Text>
                   </View>
                 );
               })}
-              {othersAmount > 0 && (
-                  <View style={styles.legendRow}>
-                    <View style={[styles.legendDot, { backgroundColor: 'rgba(174, 213, 188, 0.4)' }]} />
-                    <Text style={styles.legendLabel} numberOfLines={1}>Các khoản còn lại</Text>
-                    <Text style={styles.legendPercent}>{((othersAmount / realTotal) * 100).toFixed(2).replace('.', ',')} %</Text>
-                  </View>
-              )}
               {top4Cats.length === 0 && (
-                <Text style={{ fontStyle: 'italic', color: SoftColors.muted }}>Chưa có dữ liệu</Text>
+                <Text style={{ fontStyle: 'italic', color: SoftColors.muted }}>
+                  Chưa có dữ liệu
+                </Text>
               )}
             </View>
           </View>
 
           <View style={styles.separator} />
 
-          {/* Breakdown List */}
           <View style={styles.listContainer}>
             {categoryBreakdown.map((item, index) => {
               const cat = getCategoryById(item.id);
               const isTop4 = index < 4;
-              const barColor = isTop4 ? COLORS[index % COLORS.length] : SoftColors.muted;
+              const barColor = isTop4 ? chartColors[index % chartColors.length] : SoftColors.muted;
               const percentage = (item.amount / Math.max(totalAmount, 1)) * 100;
 
               return (
                 <View key={item.id} style={styles.listItem}>
                   <View style={styles.listRowContent}>
-                    <View style={[styles.listIcon, { backgroundColor: cat?.color ? `${cat.color}20` : '#ccc' }]}>
+                    <View
+                      style={[
+                        styles.listIcon,
+                        { backgroundColor: cat?.color ? `${cat.color}20` : '#ccc' },
+                      ]}
+                    >
                       <Ionicons
                         name={getCategoryIconName(cat?.id)}
                         size={20}
@@ -150,19 +130,24 @@ export default function ReportScreen() {
                       />
                     </View>
                     <Text style={styles.listName}>{cat?.name || 'Các khoản còn lại'}</Text>
-                    <Text style={styles.listRowPercent}>({percentage.toFixed(2).replace('.', ',')}%)</Text>
+                    <Text style={styles.listRowPercent}>
+                      ({percentage.toFixed(2).replace('.', ',')}%)
+                    </Text>
                     <Text style={styles.listAmount}>{formatCurrency(item.amount)}</Text>
                   </View>
-                  
-                  {/* Progress Bar Container */}
+
                   <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${percentage}%`, backgroundColor: barColor }]} />
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        { width: `${percentage}%`, backgroundColor: barColor },
+                      ]}
+                    />
                   </View>
                 </View>
               );
             })}
           </View>
-
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -207,7 +192,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabButtonActive: {
-    borderBottomColor: '#4EAFFF', // blue active indicator like in screenshot
+    borderBottomColor: '#4EAFFF',
   },
   tabText: {
     fontSize: 15,
@@ -317,7 +302,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(174, 213, 188, 0.25)',
     borderRadius: 3,
     marginLeft: 48,
-    marginRight: 22, // leave space for chevron alignment visually
+    marginRight: 22,
   },
   progressBarFill: {
     height: '100%',

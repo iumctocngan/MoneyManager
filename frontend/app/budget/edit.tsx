@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -10,19 +10,38 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMutations } from '@/hooks/useMutations';
+import { useStore } from '@/store/app-store';
 import { EXPENSE_CATEGORIES } from '@/constants';
 import { SoftColors } from '@/constants/design';
 import { GlowButton, SoftBackdrop, SoftCard } from '@/components/ui/soft';
-import { formatNumber, generateId } from '@/utils';
+import { formatNumber } from '@/utils';
 import { getCategoryIconName } from '@/utils/iconography';
 
-export default function AddBudgetScreen() {
-  const { addBudget } = useMutations();
-  const [amount, setAmount] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [period, setPeriod] = useState<'monthly' | 'weekly' | 'yearly'>('monthly');
+type BudgetPeriod = 'monthly' | 'weekly' | 'yearly';
+
+export default function EditBudgetScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { budgets } = useStore();
+  const { updateBudget } = useMutations();
+
+  const budget = budgets.find((item) => item.id === id);
+  const [amount, setAmount] = useState(budget ? String(budget.amount) : '');
+  const [selectedCategory, setSelectedCategory] = useState(budget?.categoryId || '');
+  const [period, setPeriod] = useState<BudgetPeriod>(budget?.period || 'monthly');
+
+  useEffect(() => {
+    if (!budget) {
+      Alert.alert('Lỗi', 'Không tìm thấy ngân sách', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    }
+  }, [budget]);
+
+  if (!budget) {
+    return null;
+  }
 
   const handleAmountChange = (text: string) => {
     setAmount(text.replace(/[^0-9]/g, ''));
@@ -43,6 +62,7 @@ export default function AddBudgetScreen() {
       start.setDate(now.getDate() - day);
       const end = new Date(start);
       end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
       return { start, end };
     }
 
@@ -65,11 +85,9 @@ export default function AddBudgetScreen() {
     const { start, end } = getDateRange();
 
     try {
-      await addBudget({
-        id: generateId(),
+      await updateBudget(id, {
         categoryId: selectedCategory,
         amount: parseInt(amount, 10),
-        spent: 0,
         period,
         startDate: start.toISOString(),
         endDate: end.toISOString(),
@@ -77,7 +95,7 @@ export default function AddBudgetScreen() {
       router.back();
     } catch (error) {
       Alert.alert(
-        'Không thể tạo ngân sách',
+        'Không thể cập nhật ngân sách',
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
       );
     }
@@ -92,7 +110,7 @@ export default function AddBudgetScreen() {
             <TouchableOpacity activeOpacity={0.82} onPress={() => router.back()} style={styles.headerIcon}>
               <Ionicons name="arrow-back" size={22} color={SoftColors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Tạo ngân sách</Text>
+            <Text style={styles.headerTitle}>Sửa ngân sách</Text>
             <View style={styles.headerSpacer} />
           </View>
 
@@ -123,9 +141,11 @@ export default function AddBudgetScreen() {
                 key={item.key}
                 activeOpacity={0.82}
                 style={[styles.periodButton, period === item.key && styles.periodButtonActive]}
-                onPress={() => setPeriod(item.key as 'monthly' | 'weekly' | 'yearly')}
+                onPress={() => setPeriod(item.key as BudgetPeriod)}
               >
-                <Text style={[styles.periodText, period === item.key && styles.periodTextActive]}>{item.label}</Text>
+                <Text style={[styles.periodText, period === item.key && styles.periodTextActive]}>
+                  {item.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </SoftCard>
@@ -138,10 +158,22 @@ export default function AddBudgetScreen() {
                 <TouchableOpacity
                   key={category.id}
                   activeOpacity={0.82}
-                  style={[styles.categoryItem, isActive && { backgroundColor: `${category.color}18`, borderColor: category.color }]}
+                  style={[
+                    styles.categoryItem,
+                    isActive && {
+                      backgroundColor: `${category.color}18`,
+                      borderColor: category.color,
+                    },
+                  ]}
                   onPress={() => setSelectedCategory(category.id)}
                 >
-                  <View style={[styles.categoryIcon, { backgroundColor: `${category.color}22` }, isActive && { backgroundColor: `${category.color}28` }]}>
+                  <View
+                    style={[
+                      styles.categoryIcon,
+                      { backgroundColor: `${category.color}22` },
+                      isActive && { backgroundColor: `${category.color}28` },
+                    ]}
+                  >
                     <Ionicons name={getCategoryIconName(category.id)} size={20} color={category.color} />
                   </View>
                   <Text style={styles.categoryName}>{category.name}</Text>
@@ -150,7 +182,7 @@ export default function AddBudgetScreen() {
             })}
           </View>
 
-          <GlowButton label="Lưu ngân sách" onPress={() => void handleSave()} style={styles.saveButton} />
+          <GlowButton label="Cập nhật ngân sách" onPress={() => void handleSave()} style={styles.saveButton} />
         </ScrollView>
       </SafeAreaView>
     </View>

@@ -9,6 +9,7 @@ type RequestOptions = {
   method?: HttpMethod;
   token?: string | null;
   body?: unknown;
+  signal?: AbortSignal;
 };
 
 type ExpoExtra = {
@@ -90,8 +91,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       method: options.method ?? 'GET',
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      signal: options.signal,
     });
-  } catch {
+  } catch (e: any) {
+    if (e.name === 'AbortError') {
+      throw e;
+    }
     throw new ApiError(
       `Khong ket noi duoc backend tai ${API_BASE_URL}. Neu ban dang mo app tren dien thoai that, hay dung IP LAN cua may thay cho localhost.`,
       0
@@ -212,6 +217,13 @@ export const api = {
       body: budget,
     });
   },
+  updateBudget(token: string, id: string, payload: Partial<Budget>) {
+    return request<Budget>(`/api/budgets/${id}`, {
+      method: 'PATCH',
+      token,
+      body: payload,
+    });
+  },
   deleteBudget(token: string, id: string) {
     return request<void>(`/api/budgets/${id}`, {
       method: 'DELETE',
@@ -262,6 +274,7 @@ export const api = {
   },
 
   async uploadReceipt(token: string, imageUri: string) {
+    // ... FileSystem does not support AbortSignal easily, but we focus on chat for now
     try {
       const response = await FileSystem.uploadAsync(
         `${API_BASE_URL}/api/ai/scan-receipt`,
@@ -295,5 +308,70 @@ export const api = {
       if (e instanceof ApiError) throw e;
       throw new ApiError(e.message || 'Network request failed', 0);
     }
+  },
+
+  async aiChat(token: string, message: string, history: any[], fileUri?: string, sessionId?: string, signal?: AbortSignal) {
+    if (fileUri) {
+      try {
+        const parameters: any = {
+          message,
+          history: JSON.stringify(history),
+        };
+        if (sessionId) parameters.sessionId = sessionId;
+
+        const response = await FileSystem.uploadAsync(
+          `${API_BASE_URL}/api/ai/chat`,
+          fileUri,
+          {
+            httpMethod: 'POST',
+            uploadType: 1, // FileSystemUploadType.MULTIPART
+            fieldName: 'file',
+            parameters,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const isOk = response.status >= 200 && response.status < 300;
+        let payload: any = null;
+        try {
+          payload = JSON.parse(response.body);
+        } catch {
+          payload = { message: response.body };
+        }
+
+        if (!isOk) {
+          throw new ApiError(payload?.error?.message || 'Chat failed', response.status);
+        }
+
+        return payload.data as { response: string; sessionId: string };
+      } catch (e: any) {
+        if (e instanceof ApiError) throw e;
+        throw new ApiError(e.message || 'Network request failed', 0);
+      }
+    } else {
+      return request<{ response: string; sessionId: string }>('/api/ai/chat', {
+        method: 'POST',
+        token,
+        body: { message, history, sessionId },
+        signal,
+      });
+    }
+  },
+
+  listChatSessions(token: string) {
+    return request<any[]>('/api/ai/sessions', { token });
+  },
+
+  getChatMessages(token: string, sessionId: string) {
+    return request<any[]>(`/api/ai/sessions/${sessionId}/messages`, { token });
+  },
+
+  deleteChatSession(token: string, sessionId: string) {
+    return request<void>(`/api/ai/sessions/${sessionId}`, {
+      method: 'DELETE',
+      token,
+    });
   },
 };

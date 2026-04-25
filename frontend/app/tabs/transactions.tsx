@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useStore } from '@/store/app-store';
+import { useMutations } from '@/hooks/useMutations';
 import { Colors, SoftColors, shadow } from '@/constants/design';
 
 import { SectionHeading, SoftBackdrop, SoftCard, softInputStyles } from '@/components/ui/soft';
@@ -23,7 +24,8 @@ import { useMonthTransactions } from '@/hooks/useTransactions';
 import { TransactionItem } from '@/components/TransactionItem';
 
 export default function TransactionsScreen() {
-  const { wallets, getCategoryById, deleteTransaction, settings } = useStore();
+  const { wallets, getCategoryById, settings } = useStore();
+  const { deleteTransaction } = useMutations();
   const [selectedType, setSelectedType] = useState<'all' | 'income' | 'expense'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);

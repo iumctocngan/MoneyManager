@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
 import { useStore } from '@/store/app-store';
-import { Colors, SoftColors, shadow } from '@/constants/design';
+import { SoftColors, shadow } from '@/constants/design';
 import { SoftBackdrop, SoftCard } from '@/components/ui/soft';
 import { generateNotifications } from '@/services/notification.service';
 import { AppNotification } from '@/constants/types';

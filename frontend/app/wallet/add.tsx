@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useStore } from '@/store/app-store';
+import { useMutations } from '@/hooks/useMutations';
 import { WALLET_COLORS, WALLET_ICONS } from '@/constants';
 import { SoftColors, shadow } from '@/constants/design';
 import { GlowButton, SoftBackdrop, SoftCard, softInputStyles } from '@/components/ui/soft';
@@ -20,7 +20,7 @@ import { formatNumber, generateId } from '@/utils';
 import { getWalletIconName } from '@/utils/iconography';
 
 export default function AddWalletScreen() {
-  const { addWallet } = useStore();
+  const { addWallet } = useMutations();
   const [name, setName] = useState('');
   const [balance, setBalance] = useState('');
   const [selectedColor, setSelectedColor] = useState(WALLET_COLORS[0]);

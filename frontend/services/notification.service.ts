@@ -1,12 +1,9 @@
 import { AppNotification, Budget, Category, Transaction } from '@/constants/types';
+import { getBudgetAlerts } from '@/services/budget-alerts.service';
 import { formatCurrency } from '@/utils';
 
 type CategoryResolver = (id: string) => Category | undefined;
 
-/**
- * Generates in-app notifications based on current budgets and transactions.
- * Purely computed — no side effects, no backend calls.
- */
 export function generateNotifications(
   budgets: Budget[],
   transactions: Transaction[],
@@ -15,69 +12,55 @@ export function generateNotifications(
   const now = new Date();
   const notifications: AppNotification[] = [];
 
-  // ── Budget alerts ─────────────────────────────────────────────
-  for (const budget of budgets) {
-    const start = new Date(budget.startDate);
-    const end = new Date(budget.endDate);
+  for (const alert of getBudgetAlerts(budgets, transactions, now)) {
+    const budget = budgets.find((item) => item.id === alert.budgetId);
+    if (!budget) {
+      continue;
+    }
 
-    // Only check active budgets
-    if (now < start || now > end) continue;
+    const category = getCategoryById(alert.categoryId);
+    const categoryName = category?.name || 'Danh mục';
 
-    const spent = transactions
-      .filter(
-        (tx) =>
-          tx.categoryId === budget.categoryId &&
-          tx.type === 'expense' &&
-          new Date(tx.date) >= start &&
-          new Date(tx.date) <= end
-      )
-      .reduce((sum, tx) => sum + tx.amount, 0);
-
-    const pct = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
-    const category = getCategoryById(budget.categoryId);
-    const catName = category?.name || 'Danh mục';
-
-    if (pct >= 100) {
+    if (alert.type === 'budget_exceeded') {
       notifications.push({
-        id: `exceeded-${budget.id}`,
-        type: 'budget_exceeded',
+        id: `exceeded-${alert.budgetId}`,
+        type: alert.type,
         title: 'Vượt ngân sách!',
-        message: `${catName}: Đã chi ${formatCurrency(spent)} / ${formatCurrency(budget.amount)} (${Math.round(pct)}%)`,
+        message: `${categoryName}: Đã chi ${formatCurrency(alert.spent)} / ${formatCurrency(budget.amount)} (${Math.round(alert.pct)}%)`,
         icon: 'alert-circle',
         color: '#FF6B78',
         timestamp: now.toISOString(),
-        budgetId: budget.id,
+        budgetId: alert.budgetId,
       });
-    } else if (pct >= 80) {
+      continue;
+    }
+
+    if (alert.type === 'budget_warning') {
       notifications.push({
-        id: `warning-${budget.id}`,
-        type: 'budget_warning',
+        id: `warning-${alert.budgetId}`,
+        type: alert.type,
         title: 'Sắp hết ngân sách',
-        message: `${catName}: Đã chi ${formatCurrency(spent)} / ${formatCurrency(budget.amount)} (${Math.round(pct)}%)`,
+        message: `${categoryName}: Đã chi ${formatCurrency(alert.spent)} / ${formatCurrency(budget.amount)} (${Math.round(alert.pct)}%)`,
         icon: 'warning-outline',
         color: '#FFC94D',
         timestamp: now.toISOString(),
-        budgetId: budget.id,
+        budgetId: alert.budgetId,
       });
+      continue;
     }
 
-    // End-of-month savings reward: last 5 days, spent < 50%
-    const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysLeft <= 5 && daysLeft >= 0 && pct < 50 && pct > 0) {
-      notifications.push({
-        id: `saving-${budget.id}`,
-        type: 'saving_good',
-        title: 'Tiết kiệm tốt! 🎉',
-        message: `${catName}: Mới sử dụng ${Math.round(pct)}% ngân sách, còn ${daysLeft} ngày.`,
-        icon: 'trophy-outline',
-        color: '#36D879',
-        timestamp: now.toISOString(),
-        budgetId: budget.id,
-      });
-    }
+    notifications.push({
+      id: `saving-${alert.budgetId}`,
+      type: alert.type,
+      title: 'Tiết kiệm tốt!',
+      message: `${categoryName}: Mới sử dụng ${Math.round(alert.pct)}% ngân sách, còn ${alert.daysLeft} ngày.`,
+      icon: 'trophy-outline',
+      color: '#36D879',
+      timestamp: now.toISOString(),
+      budgetId: alert.budgetId,
+    });
   }
 
-  // ── No-activity reminder ──────────────────────────────────────
   if (transactions.length > 0) {
     const sorted = [...transactions].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -110,8 +93,7 @@ export function generateNotifications(
     });
   }
 
-  // Sort by severity: exceeded > warning > saving > no_activity
-  const PRIORITY: Record<string, number> = {
+  const priority: Record<string, number> = {
     budget_exceeded: 0,
     budget_warning: 1,
     saving_good: 2,
@@ -119,7 +101,7 @@ export function generateNotifications(
   };
 
   notifications.sort(
-    (a, b) => (PRIORITY[a.type] ?? 99) - (PRIORITY[b.type] ?? 99)
+    (a, b) => (priority[a.type] ?? 99) - (priority[b.type] ?? 99)
   );
 
   return notifications;

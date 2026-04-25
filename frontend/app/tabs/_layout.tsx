@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '@/store/app-store';
 import { Colors, SoftColors, shadow } from '@/constants/design';
+import { LinearGradient } from 'expo-linear-gradient';
 
 function TabBarButton({ onPress }: { onPress: () => void }) {
   return (
@@ -18,12 +19,14 @@ function TabBarButton({ onPress }: { onPress: () => void }) {
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const authToken = useStore((state) => state.authToken);
+  const { aiAssistantEnabled, setAiAssistantEnabled } = useStore();
 
   if (!authToken) {
     return <Redirect href={'/auth/login' as any} />;
   }
 
   return (
+    <>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -93,6 +96,27 @@ export default function TabsLayout() {
         }}
       />
     </Tabs>
+
+    {aiAssistantEnabled && (
+      <View style={[styles.floatingContainer, { bottom: 85 + insets.bottom }]}>
+        <TouchableOpacity 
+          activeOpacity={0.9}
+          style={styles.floatingButton} 
+          onPress={() => router.push('/ai-chat')}
+        >
+          <LinearGradient colors={[SoftColors.primary, '#5FE59D']} style={styles.floatingGradient}>
+            <Ionicons name="sparkles" size={24} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.closeFloating}
+          onPress={() => setAiAssistantEnabled(false)}
+        >
+          <Ionicons name="close" size={14} color={SoftColors.muted} />
+        </TouchableOpacity>
+      </View>
+    )}
+    </>
   );
 }
 
@@ -110,5 +134,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow.glow,
+  },
+  floatingContainer: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 9999,
+  },
+  floatingButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    ...shadow.glow,
+  },
+  floatingGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeFloating: {
+    position: 'absolute',
+    top: -6,
+    right: 4,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10000,
+    ...shadow.soft,
   },
 });

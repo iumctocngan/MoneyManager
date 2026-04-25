@@ -24,6 +24,7 @@ export default function MoreScreen() {
     user,
     signOut,
     getTotalBalance,
+    setAiAssistantEnabled,
   } = useStore();
 
   const totalBalance = getTotalBalance();
@@ -81,6 +82,15 @@ export default function MoreScreen() {
 
           <SectionHeading title="Tuỳ chọn" />
           <SoftCard style={styles.sectionCard}>
+            <MenuRow 
+              icon="sparkles-outline" 
+              color={SoftColors.primary} 
+              label="Hỏi đáp cùng Trợ lý AI" 
+              onPress={() => {
+                setAiAssistantEnabled(true);
+                router.push('/ai-chat');
+              }} 
+            />
             <MenuRow icon="globe-outline" color="#56D98C" label="Tra cứu tỷ giá trực tiếp" onPress={() => router.push('/exchange-rate')} />
             <MenuRow icon="calculator-outline" color="#8C75FF" label="Tính thuế TNCN" onPress={() => router.push('/tax-calculator')} last />
           </SoftCard>

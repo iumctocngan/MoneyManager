@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useStore } from '@/store/app-store';
+import { useMutations } from '@/hooks/useMutations';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants';
 import { TransactionType } from '@/constants/types';
 import { SoftColors } from '@/constants/design';
@@ -22,7 +23,8 @@ import { formatNumber, generateId } from '@/utils';
 import { getCategoryIconName, getWalletIconName } from '@/utils/iconography';
 
 export default function AddTransactionScreen() {
-  const { wallets, addTransaction } = useStore();
+  const { wallets } = useStore();
+  const { addTransaction } = useMutations();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');

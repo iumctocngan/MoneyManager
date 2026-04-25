@@ -16,7 +16,23 @@ export interface ReportData {
   realTotal: number;
 }
 
-export function filterTransactionsByPeriod(transactions: Transaction[], period: string): Transaction[] {
+export interface DonutChartSegment {
+  percentage: number;
+  color: string;
+}
+
+export interface DonutLegendItem {
+  id: string;
+  amount: number;
+  percentage: number;
+  color: string;
+  isOther?: boolean;
+}
+
+export function filterTransactionsByPeriod(
+  transactions: Transaction[],
+  period: string
+): Transaction[] {
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -55,35 +71,24 @@ export function generateFinancialReport(
   activeTab: 'expense' | 'income',
   convertAmount?: (tx: Transaction) => number
 ): ReportData {
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-
   const convert = convertAmount || ((tx: Transaction) => tx.amount);
-
-  // 1. Filter by Period
   const filteredTxs = filterTransactionsByPeriod(transactions, period);
-
-  // 2. Filter by Type
   const activeTxs = filteredTxs.filter((tx) => tx.type === activeTab);
-  
-  // 3. Calculate Total
   const totalAmount = activeTxs.reduce((sum, tx) => sum + convert(tx), 0);
 
-  // 4. Breakdown Categories
-  const map: Record<string, number> = {};
+  const categoryMap: Record<string, number> = {};
   activeTxs.forEach((tx) => {
-    map[tx.categoryId] = (map[tx.categoryId] || 0) + convert(tx);
+    categoryMap[tx.categoryId] = (categoryMap[tx.categoryId] || 0) + convert(tx);
   });
-  
-  const categoryBreakdown = Object.entries(map)
+
+  const categoryBreakdown = Object.entries(categoryMap)
     .map(([id, amount]) => ({ id, amount }))
     .sort((a, b) => b.amount - a.amount);
 
-  // 5. Partition for UI Charts
   const top4Cats = categoryBreakdown.slice(0, 4);
-  const othersAmount = categoryBreakdown.slice(4).reduce((sum, item) => sum + item.amount, 0);
-  const realTotal = totalAmount || 1;
+  const othersAmount = categoryBreakdown
+    .slice(4)
+    .reduce((sum, item) => sum + item.amount, 0);
 
   return {
     activeTxs,
@@ -91,6 +96,41 @@ export function generateFinancialReport(
     categoryBreakdown,
     top4Cats,
     othersAmount,
-    realTotal,
+    realTotal: totalAmount || 1,
+  };
+}
+
+export function buildDonutChartModel(
+  topItems: CategoryBreakdownItem[],
+  othersAmount: number,
+  totalAmount: number,
+  colors: string[],
+  othersColor = 'rgba(174, 213, 188, 0.4)'
+): { data: DonutChartSegment[]; legendItems: DonutLegendItem[] } {
+  const safeTotal = Math.max(totalAmount, 1);
+
+  const legendItems: DonutLegendItem[] = topItems.map((item, index) => ({
+    id: item.id,
+    amount: item.amount,
+    percentage: (item.amount / safeTotal) * 100,
+    color: colors[index % colors.length],
+  }));
+
+  if (othersAmount > 0) {
+    legendItems.push({
+      id: 'others',
+      amount: othersAmount,
+      percentage: (othersAmount / safeTotal) * 100,
+      color: othersColor,
+      isOther: true,
+    });
+  }
+
+  return {
+    data: legendItems.map((item) => ({
+      percentage: item.amount / safeTotal,
+      color: item.color,
+    })),
+    legendItems,
   };
 }

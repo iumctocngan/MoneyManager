@@ -1,9 +1,13 @@
 import { TransactionItem } from '@/components/TransactionItem';
 import { DonutChart } from '@/components/ui/donut-chart';
 import { SectionHeading, SoftBackdrop, SoftCard } from '@/components/ui/soft';
-import { Colors , SoftColors, shadow } from '@/constants/design';
+import { Colors, SoftColors, shadow } from '@/constants/design';
 
-import { filterTransactionsByPeriod, generateFinancialReport } from '@/services/report.service';
+import {
+  buildDonutChartModel,
+  filterTransactionsByPeriod,
+  generateFinancialReport,
+} from '@/services/report.service';
 import { generateNotifications } from '@/services/notification.service';
 import { useStore } from '@/store/app-store';
 import { Wallet, Transaction } from '@/constants/types';
@@ -23,6 +27,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const EXPENSE_CHART_COLORS = ['#FAD02C', Colors.expense, SoftColors.mint, SoftColors.purple];
 
 export default function HomeScreen() {
   const { wallets, transactions, budgets, getTotalBalance, getCategoryById, settings, refreshState, user } = useStore();
@@ -70,18 +76,10 @@ export default function HomeScreen() {
     return generateFinancialReport(transactions, period, 'expense', txConverter);
   }, [transactions, period]);
 
-  const COLORS = ['#FAD02C', Colors.expense, SoftColors.mint, SoftColors.purple];
-  const donutData = top4Exp.map((item, idx) => ({
-    percentage: item.amount / totalExpense,
-    color: COLORS[idx % COLORS.length]
-  }));
-
-  if (othersAmount > 0) {
-    donutData.push({
-      percentage: othersAmount / totalExpense,
-      color: 'rgba(174, 213, 188, 0.4)' // Soft neutral color
-    });
-  }
+  const expenseDonut = useMemo(
+    () => buildDonutChartModel(top4Exp, othersAmount, totalExpense, EXPENSE_CHART_COLORS),
+    [top4Exp, othersAmount, totalExpense]
+  );
 
   const PERIOD_LABELS = {
     today: 'Hôm nay',
@@ -289,22 +287,22 @@ export default function HomeScreen() {
 
               <View style={styles.newReportBottom}>
                 <View style={styles.donutChartWrapper}>
-                  <DonutChart data={donutData} size={100} strokeWidth={22} />
+                  <DonutChart data={expenseDonut.data} size={100} strokeWidth={22} />
                 </View>
 
                 <View style={styles.legendContainer}>
-                  {top4Exp.map((item, index) => {
-                    const cat = getCategoryById(item.id);
-                    const p = ((item.amount / totalExpense) * 100).toFixed(2).replace('.', ',');
+                  {expenseDonut.legendItems.map((item) => {
+                    const cat = item.isOther ? null : getCategoryById(item.id);
+                    const p = item.percentage.toFixed(2).replace('.', ',');
                     return (
                       <View style={styles.legendRow} key={item.id}>
-                        <View style={[styles.legendDot, { backgroundColor: COLORS[index % COLORS.length] }]} />
+                        <View style={[styles.legendDot, { backgroundColor: item.color }]} />
                         <Text style={styles.legendLabel}>{cat?.name || 'Các khoản còn lại'}</Text>
                         <Text style={styles.legendPercent}>{p} %</Text>
                       </View>
                     );
                   })}
-                  {othersAmount > 0 && (
+                  {false && (
                     <View style={styles.legendRow}>
                       <View style={[styles.legendDot, { backgroundColor: 'rgba(174, 213, 188, 0.4)' }]} />
                       <Text style={styles.legendLabel}>Các khoản còn lại</Text>
@@ -428,11 +426,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 18,
   },
-  eyebrow: {
-    fontSize: 14,
-    color: SoftColors.muted,
-    marginBottom: 4,
-  },
   headerTitle: {
     fontSize: 32,
     fontWeight: '900',
@@ -529,125 +522,9 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 20,
   },
-  reportHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  reportTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: SoftColors.text,
-  },
-  reportSub: {
-    fontSize: 13,
-    color: SoftColors.muted,
-    marginTop: 4,
-  },
-  reportAction: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reportStats: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
-  reportStatBox: {
-    flex: 1,
-    borderRadius: 18,
-    padding: 12,
-    backgroundColor: 'rgba(255,255,255,0.74)',
-  },
-  reportStatGreen: {
-    backgroundColor: 'rgba(75, 221, 125, 0.14)',
-  },
-  reportStatRed: {
-    backgroundColor: 'rgba(255, 107, 120, 0.14)',
-  },
-  reportStatLabel: {
-    fontSize: 11,
-    color: SoftColors.muted,
-    marginBottom: 4,
-  },
-  reportStatValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: SoftColors.text,
-  },
-  periodRow: {
-    marginTop: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  periodPillActive: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: SoftColors.primary,
-  },
-  periodPillActiveText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  netChangeText: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
   transactionsCard: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-  },
-  transactionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(174, 213, 188, 0.25)',
-  },
-  transactionRowLast: {
-    borderBottomWidth: 0,
-  },
-  transactionIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  transactionBody: {
-    flex: 1,
-  },
-  transactionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: SoftColors.text,
-  },
-  transactionMeta: {
-    fontSize: 12,
-    color: SoftColors.muted,
-    marginTop: 4,
-  },
-  transactionAmountWrap: {
-    alignItems: 'flex-end',
-    marginLeft: 12,
-  },
-  transactionAmount: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  transactionDate: {
-    fontSize: 11,
-    color: SoftColors.muted,
-    marginTop: 5,
   },
   emptyState: {
     alignItems: 'center',
@@ -740,17 +617,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: SoftColors.text,
   },
-  settingsBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(174, 213, 188, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-  },
   periodDropdownBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -823,21 +689,6 @@ const styles = StyleSheet.create({
   legendPercent: {
     fontSize: 14,
     fontWeight: '700',
-    color: SoftColors.text,
-  },
-  newReportAction: {
-    alignItems: 'flex-end',
-  },
-  historyBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(174, 213, 188, 0.4)',
-  },
-  historyBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
     color: SoftColors.text,
   },
 });

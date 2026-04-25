@@ -2,6 +2,7 @@ import { GlowButton, SoftBackdrop, SoftCard, softInputStyles } from '@/component
 import { WALLET_COLORS, WALLET_ICONS } from '@/constants';
 import { SoftColors, shadow } from '@/constants/design';
 import { useStore } from '@/store/app-store';
+import { useMutations } from '@/hooks/useMutations';
 import { formatNumber } from '@/utils';
 import { getWalletIconName } from '@/utils/iconography';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,7 +22,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function EditWalletScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { wallets, updateWallet } = useStore();
+  const { wallets } = useStore();
+  const { updateWallet } = useMutations();
 
   const wallet = wallets.find((w) => w.id === id);
 

@@ -1,7 +1,9 @@
 import { SoftBackdrop } from '@/components/ui/soft';
+import { SoftSuccessModal } from '@/components/ui/SoftSuccessModal';
 import { shadow, SoftColors } from '@/constants/design';
 import { Transaction } from '@/constants/types';
 import { useStore } from '@/store/app-store';
+import { useMutations } from '@/hooks/useMutations';
 import { generateId } from '@/utils';
 import { api } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -79,15 +81,17 @@ export default function AiVoiceScreen() {
   // FIX: Lưu URI sau khi dừng ghi âm để có thể retry
   const [lastAudioUri, setLastAudioUri] = useState<string | null>(null);
   const [transcribedItems, setTranscribedItems] = useState<Partial<Transaction>[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const {
     authToken: token,
     getCategoryById,
-    addTransactionsBatch,
     selectedWalletId,
     wallets,
     setSelectedWallet,
   } = useStore();
+
+  const { addTransactionsBatch } = useMutations();
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   // FIX: Ref lưu animation loop để có thể stop chính xác
@@ -250,9 +254,7 @@ export default function AiVoiceScreen() {
       }));
 
       await addTransactionsBatch(transactionsToSave);
-      Alert.alert('Thành công', 'Đã lưu các giao dịch!', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      setShowSuccess(true);
     } catch (error: any) {
       Alert.alert('Lỗi', error.message || 'Không thể lưu giao dịch');
       setStep('idle');
@@ -427,6 +429,14 @@ export default function AiVoiceScreen() {
           </Animated.View>
         </View>
       </SafeAreaView>
+      <SoftSuccessModal
+        visible={showSuccess}
+        message="Đã lưu các giao dịch thành công!"
+        onClose={() => {
+          setShowSuccess(false);
+          router.back();
+        }}
+      />
     </View>
   );
 }

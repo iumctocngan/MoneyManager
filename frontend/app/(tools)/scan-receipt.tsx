@@ -1,7 +1,9 @@
 import { SoftBackdrop, SoftCard } from '@/components/ui/soft';
+import { SoftSuccessModal } from '@/components/ui/SoftSuccessModal';
 import { shadow, SoftColors } from '@/constants/design';
 import { Transaction } from '@/constants/types';
 import { useStore } from '@/store/app-store';
+import { useMutations } from '@/hooks/useMutations';
 import { generateId } from '@/utils';
 import { api } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,15 +41,17 @@ export default function ScanReceiptScreen() {
   // FIX: Lưu lastUri để có thể retry mà không cần chọn lại ảnh
   const [lastUri, setLastUri] = useState<string | null>(null);
   const [scannedItems, setScannedItems] = useState<Partial<Transaction>[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const {
     authToken: token,
     getCategoryById,
-    addTransactionsBatch,
     selectedWalletId,
     wallets,
     setSelectedWallet,
   } = useStore();
+
+  const { addTransactionsBatch } = useMutations();
 
   const isProcessing = step === 'uploading' || step === 'analyzing';
 
@@ -153,9 +157,7 @@ export default function ScanReceiptScreen() {
       }));
 
       await addTransactionsBatch(transactionsToSave);
-      Alert.alert('Thành công', 'Đã lưu giao dịch từ hóa đơn!', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      setShowSuccess(true);
     } catch (error: any) {
       Alert.alert('Lỗi', error.message || 'Không thể lưu giao dịch');
       setStep('idle');
@@ -341,6 +343,14 @@ export default function ScanReceiptScreen() {
           </View>
         </View>
       </SafeAreaView>
+      <SoftSuccessModal
+        visible={showSuccess}
+        message="Đã lưu giao dịch từ hóa đơn!"
+        onClose={() => {
+          setShowSuccess(false);
+          router.back();
+        }}
+      />
     </View>
   );
 }
