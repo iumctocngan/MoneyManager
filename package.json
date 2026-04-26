@@ -17,7 +17,7 @@
     "backend:start": "cd backend && npm run start",
     "backend:check": "cd backend && npm run check",
     "backend:lint": "cd backend && npm run lint",
-    "install:all": "npm install && npm run frontend:install && npm run backend:install"
+    "install:all": "npm run frontend:install && npm run backend:install"
   },
   "private": true
 }
