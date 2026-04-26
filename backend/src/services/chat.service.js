@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { query } from '../config/database.js';
 import { HttpError } from '../utils/http-error.js';
 
@@ -62,6 +64,30 @@ export async function saveMessage(userId, sessionId, role, content, fileUri = nu
 }
 
 export async function deleteSession(userId, sessionId) {
+  await assertSessionOwnership(userId, sessionId);
+
+  // 1. Find all messages with file_uri to delete files from disk
+  const messages = await query(
+    'SELECT file_uri FROM chat_messages WHERE session_id = :sessionId',
+    { sessionId }
+  );
+
+  for (const msg of messages) {
+    if (msg.file_uri && msg.file_uri.startsWith('/uploads/')) {
+      const fileName = msg.file_uri.replace('/uploads/', '');
+      const filePath = path.join(process.cwd(), 'uploads', fileName);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+          console.log(`[chatService] Deleted file: ${filePath}`);
+        } catch (err) {
+          console.error(`[chatService] Error deleting file ${filePath}:`, err.message);
+        }
+      }
+    }
+  }
+
+  // 2. Delete the session (cascades to messages)
   const result = await query(
     'DELETE FROM chat_sessions WHERE id = :sessionId AND user_id = :userId',
     { userId, sessionId }

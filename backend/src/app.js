@@ -30,6 +30,7 @@ app.get('/', (request, response) => {
 
 app.use('/health', healthRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/uploads', express.static('uploads'));
 app.use('/api', requireAuth, apiRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -138,6 +138,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 }
 
 export const api = {
+  API_BASE_URL,
   register(body: { email: string; password: string; name?: string }) {
     return request<AuthResponse>('/api/auth/register', {
       method: 'POST',

@@ -19,6 +19,7 @@ import { Colors, SoftColors, shadow } from '@/constants/design';
 import { ChatMessage } from '@/store/types';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, router } from 'expo-router';
+import { api } from '@/utils/api';
 
 export default function AIChatScreen() {
   const insets = useSafeAreaInsets();
@@ -121,14 +122,14 @@ export default function AIChatScreen() {
         <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.aiBubble]}>
           {item.fileUri && (
             <View style={styles.filePreview}>
-              {item.fileUri.endsWith('.jpg') || item.fileUri.endsWith('.png') || item.fileUri.includes('ImagePicker') || item.fileUri.includes('image-') ? (
-                <Image source={{ uri: item.fileUri }} style={styles.previewImage} />
-              ) : (
-                <View style={styles.voicePreview}>
-                  <Ionicons name="mic" size={20} color={isUser ? '#fff' : Colors.primary} />
-                  <Text style={[styles.fileText, { color: isUser ? '#fff' : Colors.text }]}>Ghi âm</Text>
-                </View>
-              )}
+              <Image 
+                source={{ 
+                  uri: item.fileUri.startsWith('/uploads/') 
+                    ? `${api.API_BASE_URL}${item.fileUri}` 
+                    : item.fileUri 
+                }} 
+                style={styles.previewImage} 
+              />
             </View>
           )}
           <Text style={[styles.messageText, isUser ? styles.userText : styles.aiText]}>
@@ -369,18 +370,7 @@ const styles = StyleSheet.create({
     height: 150,
     resizeMode: 'cover',
   },
-  voicePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 8,
-  },
-  fileText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: '600',
-  },
+
   busyContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -492,9 +482,5 @@ const styles = StyleSheet.create({
   deleteSessionBtn: {
     padding: 10,
     marginRight: 5,
-  },
-  recordingButton: {
-    backgroundColor: 'rgba(255, 75, 75, 0.1)',
-    borderRadius: 20,
   },
 });

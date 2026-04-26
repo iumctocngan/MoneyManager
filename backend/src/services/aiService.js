@@ -182,7 +182,7 @@ async function extractTransactionFromReceipt(imagePath, mimeType) {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export const aiService = {
-  async transcribeTransactions(audioFilePath) {
+  async transcribeTransactions(audioFilePath, shouldCleanup = true) {
     try {
       console.log('[aiService] Transcribing with Groq...');
       const transcript = await transcribeWithGroq(audioFilePath);
@@ -193,16 +193,16 @@ export const aiService = {
       console.log('[aiService] Extracting with LangChain...');
       return await extractTransactionsFromText(transcript);
     } finally {
-      cleanupFile(audioFilePath);
+      if (shouldCleanup) cleanupFile(audioFilePath);
     }
   },
 
-  async scanReceipt(imagePath, mimeType) {
+  async scanReceipt(imagePath, mimeType, shouldCleanup = true) {
     try {
       console.log('[aiService] Scanning receipt with LangChain Multimodal...');
       return await extractTransactionFromReceipt(imagePath, mimeType);
     } finally {
-      cleanupFile(imagePath);
+      if (shouldCleanup) cleanupFile(imagePath);
     }
   },
 };

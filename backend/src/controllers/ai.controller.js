@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { aiService } from '../services/aiService.js';
 import * as aiAgent from '../services/aiAgent.js';
 import * as chatService from '../services/chat.service.js';
@@ -54,18 +56,28 @@ export const chat = async (req, res) => {
       sessionId = await chatService.createSession(userId, title);
     }
 
-    // 2. Save User message
-    const fileUri = req.file ? req.file.path : null;
+    // 2. Handle file persistence
+    let fileUri = null;
+    if (req.file) {
+      const uploadsDir = path.join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+      
+      const fileName = `${Date.now()}-${req.file.originalname}`;
+      const permanentPath = path.join(uploadsDir, fileName);
+      
+      fs.renameSync(req.file.path, permanentPath);
+      // We store the relative URL for the frontend
+      fileUri = `/uploads/${fileName}`;
+      // Update req.file.path so aiAgent uses the new location
+      req.file.path = permanentPath;
+    }
+
     await chatService.saveMessage(userId, sessionId, 'user', message, fileUri);
 
     // 3. Get AI Response
     const extraContext = {};
-    if (req.file) {
-      if (req.file.mimetype.startsWith('audio/')) {
-        extraContext.audioFilePath = req.file.path;
-      } else if (req.file.mimetype.startsWith('image/')) {
-        extraContext.imageFilePath = req.file.path;
-      }
+    if (req.file && req.file.mimetype.startsWith('image/')) {
+      extraContext.imageFilePath = req.file.path;
     }
 
     const response = await aiAgent.chatWithAI(userId, sessionId, message, extraContext);

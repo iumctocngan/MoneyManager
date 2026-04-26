@@ -302,7 +302,7 @@ async function getAgent() {
           const imageFilePath = config.configurable?.imageFilePath;
           if (!imageFilePath) return 'Không tìm thấy ảnh hóa đơn trong yêu cầu hiện tại.';
 
-          const transactions = await aiService.scanReceipt(imageFilePath);
+          const transactions = await aiService.scanReceipt(imageFilePath, null, false);
           return `Tìm thấy ${transactions.length} giao dịch từ hóa đơn: ${JSON.stringify(transactions)}`;
         } catch (error) {
           return `Lỗi khi quét hóa đơn: ${error.message}`;

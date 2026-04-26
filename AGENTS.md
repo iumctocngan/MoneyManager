@@ -2,7 +2,7 @@
 
 This repository is a mobile-first money manager app with a separate API server, organized as a monorepo. Use this file as the primary project brief and source of truth for all AI interactions.
 
-## 🎯 Project Context
+## Project Context
 
 - **Frontend**: Expo 54, React Native, Expo Router, Zustand, AsyncStorage.
 - **Backend**: Node.js, Express 4, MySQL, token-based auth.
@@ -10,7 +10,7 @@ This repository is a mobile-first money manager app with a separate API server, 
   - **VND-only**: The app is strictly VND-only. Never add multi-currency logic.
   - **Vietnamese Copy**: Preserve Vietnamese text in UI; save files as UTF-8.
 
-## 🛠 Development Workflow
+## Development Workflow
 
 ### 1. Research & Contract Alignment
 - Inspect `backend/sql/schema.sql` for data changes.
@@ -22,24 +22,24 @@ This repository is a mobile-first money manager app with a separate API server, 
 3. **Frontend Store**: Update `frontend/store/app-store.ts`.
 4. **UI**: Update `app/` screens and `components/`.
 
-## 🔍 Review Priorities
+## Review Priorities
 
-### 🔴 CRITICAL -- Security & Integrity
+### CRITICAL -- Security & Integrity
 - **VND Integrity**: Ensure no decimals or exchange rate logic is introduced.
 - **Injection**: Use parameterized queries in `backend/src/services/`.
 - **Auth Scoping**: Every backend query MUST be scoped to `:userId`.
 
-### 🟡 HIGH -- Type Safety & Async
+### HIGH -- Type Safety & Async
 - **Sync Logic**: Maintain the local-to-remote import bridge in `app-store.ts`.
 - **Async Handling**: Use `withTransaction` for multi-step backend operations.
 - **Type Casting**: Avoid `any`; keep frontend types in sync with `backend/src/utils/serializers.js`.
 
-### 🔵 MEDIUM -- UX & Patterns
+### MEDIUM -- UX & Patterns
 - **UI Primitives**: Use `Soft*` components and design tokens from `frontend/constants/`.
 - **Thin Routes**: Business rules belong in `services/`, not `routes/`.
 
 
-## 📚 Project-Local Skills
+## Project-Local Skills
 
 Located in `.agents/skills/`:
 - `expo-router-mobile`: UI patterns and mobile edge cases.
