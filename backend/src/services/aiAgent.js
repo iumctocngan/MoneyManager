@@ -352,7 +352,7 @@ async function getAgent() {
 
 export async function chatWithAI(userId, sessionId, message, extraContext = {}) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 s hard cap
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 s hard cap
 
   try {
     const agent = await getAgent();
@@ -368,8 +368,8 @@ export async function chatWithAI(userId, sessionId, message, extraContext = {}) 
     return lastMessage.content;
   } catch (error) {
     if (error.name === 'AbortError') {
-      console.error('AI Chat request timed out after 10s');
-      throw new Error('Yêu cầu AI quá lâu (10 giây) và đã bị ngắt tự động. Vui lòng thử lại với câu hỏi ngắn hơn.');
+      console.error('AI Chat request timed out after 15s');
+      throw new Error('Yêu cầu AI quá lâu (15 giây) và đã bị ngắt tự động. Vui lòng thử lại với câu hỏi ngắn hơn.');
     }
 
     console.error('AI Chat error, resetting cache:', error.message);
