@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -86,28 +87,18 @@ export default function AIChatScreen() {
   };
 
   const handleDeleteSession = (sessionId: string) => {
-    if (Platform.OS === 'web') {
-      if (confirm('Bạn có chắc muốn xóa cuộc trò chuyện này?')) {
-        deleteSession(sessionId);
-      }
-      return;
-    }
-
-    // @ts-ignore - Alert exists on mobile
-    import('react-native').then(({ Alert }) => {
-      Alert.alert(
-        'Xóa cuộc trò chuyện',
-        'Bạn có chắc muốn xóa cuộc trò chuyện này? Toàn bộ tin nhắn sẽ bị mất.',
-        [
-          { text: 'Hủy', style: 'cancel' },
-          { 
-            text: 'Xóa', 
-            style: 'destructive',
-            onPress: () => deleteSession(sessionId)
-          },
-        ]
-      );
-    });
+    Alert.alert(
+      'Xóa cuộc trò chuyện',
+      'Bạn có chắc muốn xóa cuộc trò chuyện này? Toàn bộ tin nhắn sẽ bị mất.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { 
+          text: 'Xóa', 
+          style: 'destructive',
+          onPress: () => deleteSession(sessionId)
+        },
+      ]
+    );
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
