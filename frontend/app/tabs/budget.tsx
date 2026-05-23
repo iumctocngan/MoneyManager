@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -33,11 +34,20 @@ export default function BudgetScreen() {
         const remaining = budget.amount - spent;
         const pct = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
 
+        // Tính toán số ngày còn lại của chu kỳ ngân sách
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+        const diffTime = endDateOnly.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const daysLeft = diffDays < 0 ? -1 : diffDays;
+
         return {
           ...budget,
           spent,
           remaining,
           pct,
+          daysLeft,
         };
       }),
     [budgets, transactions]
@@ -51,7 +61,7 @@ export default function BudgetScreen() {
     try {
       await deleteBudget(id);
     } catch (error) {
-      Alert.alert(
+      SoftAlert.alert(
         'Không thể xoá ngân sách',
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
       );
@@ -59,7 +69,7 @@ export default function BudgetScreen() {
   };
 
   const confirmDelete = (id: string) => {
-    Alert.alert('Xoá ngân sách', 'Bạn có chắc muốn xoá ngân sách này?', [
+    SoftAlert.alert('Xoá ngân sách', 'Bạn có chắc muốn xoá ngân sách này?', [
       { text: 'Huỷ', style: 'cancel' },
       {
         text: 'Xoá',
@@ -147,6 +157,24 @@ export default function BudgetScreen() {
                       <View>
                         <Text style={styles.categoryName}>{category?.name || 'Khác'}</Text>
                         <Text style={styles.categorySpent}>Đã chi: {formatCurrency(budget.spent)}</Text>
+                        <Text
+                          style={[
+                            styles.daysLeftText,
+                            {
+                              color:
+                                budget.daysLeft >= 0 && budget.daysLeft <= 3
+                                  ? Colors.warning
+                                  : SoftColors.muted,
+                              marginTop: 4,
+                            },
+                          ]}
+                        >
+                          {budget.daysLeft > 0
+                            ? `Thời hạn: Còn ${budget.daysLeft} ngày`
+                            : budget.daysLeft === 0
+                              ? 'Thời hạn: Hôm nay hết hạn'
+                              : 'Thời hạn: Đã kết thúc'}
+                        </Text>
                       </View>
                     </View>
                     <View style={styles.cardHeaderRight}>
@@ -330,9 +358,22 @@ const styles = StyleSheet.create({
     color: SoftColors.text,
     marginBottom: 4,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   categorySpent: {
     fontSize: 13,
     color: SoftColors.muted,
+  },
+  bullet: {
+    color: SoftColors.muted,
+    fontSize: 12,
+    marginHorizontal: 4,
+  },
+  daysLeftText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   categoryBudget: {
     fontSize: 16,

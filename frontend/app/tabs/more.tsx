@@ -1,12 +1,12 @@
 import React from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,7 +31,7 @@ export default function MoreScreen() {
 
 
   const handleLogout = () => {
-    Alert.alert('Đăng xuất', 'Bạn muốn đăng xuất khỏi thiết bị này?', [
+    SoftAlert.alert('Đăng xuất', 'Bạn muốn đăng xuất khỏi thiết bị này?', [
       { text: 'Huỷ', style: 'cancel' },
       {
         text: 'Đăng xuất',

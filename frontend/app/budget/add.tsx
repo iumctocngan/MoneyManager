@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -32,33 +32,37 @@ export default function AddBudgetScreen() {
     const now = new Date();
 
     if (period === 'monthly') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       return { start, end };
     }
 
     if (period === 'weekly') {
       const day = now.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
       const start = new Date(now);
-      start.setDate(now.getDate() - day);
+      start.setDate(now.getDate() + diffToMonday);
+      start.setHours(0, 0, 0, 0);
+
       const end = new Date(start);
       end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
       return { start, end };
     }
 
-    const start = new Date(now.getFullYear(), 0, 1);
-    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+    const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
     return { start, end };
   };
 
   const handleSave = async () => {
     if (!amount || parseInt(amount, 10) === 0) {
-      Alert.alert('Thiếu số tiền', 'Vui lòng nhập số tiền ngân sách.');
+      SoftAlert.alert('Thiếu số tiền', 'Vui lòng nhập số tiền ngân sách.');
       return;
     }
 
     if (!selectedCategory) {
-      Alert.alert('Thiếu danh mục', 'Vui lòng chọn danh mục cần theo dõi.');
+      SoftAlert.alert('Thiếu danh mục', 'Vui lòng chọn danh mục cần theo dõi.');
       return;
     }
 
@@ -76,7 +80,7 @@ export default function AddBudgetScreen() {
       });
       router.back();
     } catch (error) {
-      Alert.alert(
+      SoftAlert.alert(
         'Không thể tạo ngân sách',
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
       );

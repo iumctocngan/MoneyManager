@@ -26,6 +26,13 @@ export class ApiError extends Error {
   }
 }
 
+type OnUnauthorizedCallback = () => void;
+let onUnauthorized: OnUnauthorizedCallback | null = null;
+
+export function setOnUnauthorized(cb: OnUnauthorizedCallback) {
+  onUnauthorized = cb;
+}
+
 function getDevelopmentHost() {
   const hostUri = Constants.expoConfig?.hostUri?.trim();
 
@@ -118,6 +125,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     // Standard error envelope: { success: false, error: { message, details } }
     const errorMessage =
       payload?.error?.message || payload?.message || 'Yeu cau den backend that bai.';
+    
+    if (response.status === 401) {
+      onUnauthorized?.();
+    }
+    
     throw new ApiError(errorMessage, response.status);
   }
 
@@ -346,13 +358,13 @@ export const api = {
           throw new ApiError(payload?.error?.message || 'Chat failed', response.status);
         }
 
-        return payload.data as { response: string; sessionId: string };
+        return payload.data as { response: string; sessionId: string; dataModified?: boolean };
       } catch (e: any) {
         if (e instanceof ApiError) throw e;
         throw new ApiError(e.message || 'Network request failed', 0);
       }
     } else {
-      return request<{ response: string; sessionId: string }>('/api/ai/chat', {
+      return request<{ response: string; sessionId: string; dataModified?: boolean }>('/api/ai/chat', {
         method: 'POST',
         token,
         body: { message, history, sessionId },

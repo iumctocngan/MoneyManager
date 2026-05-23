@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -39,34 +39,34 @@ export default function TransferMoneyScreen() {
 
   const handleTransfer = async () => {
     if (!amount || parseInt(amount, 10) === 0) {
-      Alert.alert('Thiếu số tiền', 'Vui lòng nhập số tiền cần chuyển.');
+      SoftAlert.alert('Thiếu số tiền', 'Vui lòng nhập số tiền cần chuyển.');
       return;
     }
 
     if (!fromWalletId || !toWalletId) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng chọn ví Nguồn và ví Đích.');
+      SoftAlert.alert('Thiếu thông tin', 'Vui lòng chọn ví Nguồn và ví Đích.');
       return;
     }
     
     if (fromWalletId === toWalletId) {
-      Alert.alert('Lỗi chọn ví', 'Ví nguồn và ví đích không được trùng nhau.');
+      SoftAlert.alert('Lỗi chọn ví', 'Ví nguồn và ví đích không được trùng nhau.');
       return;
     }
 
     const numericAmount = parseInt(amount, 10);
     
     if (fromWallet && numericAmount > fromWallet.balance) {
-      Alert.alert('Số dư không đủ', 'Số tiền chuyển không được vượt quá số dư hiện tại của ví.');
+      SoftAlert.alert('Số dư không đủ', 'Số tiền chuyển không được vượt quá số dư hiện tại của ví.');
       return;
     }
 
     try {
       await transferMoney(fromWalletId, toWalletId, numericAmount, note);
-      Alert.alert('Thành công', 'Đã chuyển tiền.', [
+      SoftAlert.alert('Thành công', 'Đã chuyển tiền.', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error) {
-      Alert.alert(
+      SoftAlert.alert(
         'Không thể chuyển tiền',
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
       );

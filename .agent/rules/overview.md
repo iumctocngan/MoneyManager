@@ -1,3 +1,6 @@
+---
+trigger: always_on
+---
 ## Project overview
 
 This repository contains **MoneyManager**, a personal finance management application with a mobile-first architecture. It features a React Native (Expo) frontend and a Node.js (Express) backend.
@@ -6,7 +9,7 @@ The app provides offline-first tracking, budget management, and an intelligent A
 
 - The **Frontend** (`frontend/`) is built with React Native, Expo Router, and Zustand. It uses a local SQLite database for offline-first persistence.
 - The **Backend** (`backend/`) is an Express.js API interacting with a MySQL database. It acts as the central cloud sync and provides AI capabilities.
-- The AI Agent uses LangChain and Gemini 3.1 Flash-Lite to analyze spending, quản lý transactions, and scan receipts.
+- The AI Agent uses LangChain and Gemini 3.1 Flash-Lite to analyze spending, manage transactions, and scan receipts.
 - All monetary values strictly use `INTEGER` in SQLite to prevent floating-point precision issues with VNĐ.
 
 ## Common commands

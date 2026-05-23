@@ -56,14 +56,25 @@ const customStorage: StateStorage = {
   },
 };
 
+import { setOnUnauthorized } from '@/utils/api';
+
 export const useStore = create<AppState>()(
   persist(
-    (...a) => ({
-      ...createAuthSlice(...a),
-      ...createDataSlice(...a),
-      ...createUISlice(...a),
-      ...createChatSlice(...a),
-    }),
+    (...a) => {
+      const [set, get] = a;
+      
+      // Handle global 401s
+      setOnUnauthorized(() => {
+        get().signOut();
+      });
+
+      return {
+        ...createAuthSlice(...a),
+        ...createDataSlice(...a),
+        ...createUISlice(...a),
+        ...createChatSlice(...a),
+      };
+    },
     {
       name: 'money-lover-storage',
       storage: createJSONStorage(() => customStorage),

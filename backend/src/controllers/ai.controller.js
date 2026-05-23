@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import sharp from 'sharp';
 import { aiService } from '../services/aiService.js';
 import * as aiAgent from '../services/aiAgent.js';
 import * as chatService from '../services/chat.service.js';
@@ -62,14 +63,35 @@ export const chat = async (req, res) => {
       const uploadsDir = path.join(process.cwd(), 'uploads');
       if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
       
-      const fileName = `${Date.now()}-${req.file.originalname}`;
-      const permanentPath = path.join(uploadsDir, fileName);
+      const isImage = req.file.mimetype.startsWith('image/');
       
-      fs.renameSync(req.file.path, permanentPath);
-      // We store the relative URL for the frontend
-      fileUri = `/uploads/${fileName}`;
-      // Update req.file.path so aiAgent uses the new location
-      req.file.path = permanentPath;
+      if (isImage) {
+        const originalNameParsed = path.parse(req.file.originalname);
+        const fileName = `${Date.now()}-${originalNameParsed.name}.webp`;
+        const permanentPath = path.join(uploadsDir, fileName);
+        
+        // Compress and convert to WebP
+        await sharp(req.file.path)
+          .webp({ quality: 80 })
+          .toFile(permanentPath);
+          
+        // Delete original temp file
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (unlinkError) {
+          console.warn('Failed to delete temp file:', unlinkError);
+        }
+        
+        fileUri = `/uploads/${fileName}`;
+        req.file.path = permanentPath;
+        req.file.mimetype = 'image/webp';
+      } else {
+        const fileName = `${Date.now()}-${req.file.originalname}`;
+        const permanentPath = path.join(uploadsDir, fileName);
+        fs.renameSync(req.file.path, permanentPath);
+        fileUri = `/uploads/${fileName}`;
+        req.file.path = permanentPath;
+      }
     }
 
     await chatService.saveMessage(userId, sessionId, 'user', message, fileUri);
@@ -80,12 +102,12 @@ export const chat = async (req, res) => {
       extraContext.imageFilePath = req.file.path;
     }
 
-    const response = await aiAgent.chatWithAI(userId, sessionId, message, extraContext);
+    const result = await aiAgent.chatWithAI(userId, sessionId, message, extraContext);
 
     // 4. Save AI Response
-    await chatService.saveMessage(userId, sessionId, 'assistant', response);
+    await chatService.saveMessage(userId, sessionId, 'assistant', result.text);
 
-    sendSuccess(res, { response, sessionId });
+    sendSuccess(res, { response: result.text, sessionId, dataModified: result.dataModified });
   } catch (error) {
     console.error('AI Chat error:', error);
     sendError(res, error.message || 'Error communicating with AI', error.statusCode || 500);
@@ -111,7 +133,7 @@ export const getMessages = async (req, res) => {
   }
 };
 
-export const deleteSession = async (req, res) => {
+export async function deleteSession(req, res) {
   try {
     const { sessionId } = req.params;
     await chatService.deleteSession(req.user.id, sessionId);
@@ -119,4 +141,4 @@ export const deleteSession = async (req, res) => {
   } catch (error) {
     sendError(res, error.message, error.statusCode || 500);
   }
-};
+}

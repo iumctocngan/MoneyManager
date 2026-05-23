@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Transaction } from '@/constants/types';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -114,7 +114,7 @@ export default function TransactionsScreen() {
     try {
       await deleteTransaction(id);
     } catch (error) {
-      Alert.alert(
+      SoftAlert.alert(
         'Không thể xoá giao dịch',
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
       );
@@ -122,7 +122,7 @@ export default function TransactionsScreen() {
   };
 
   const confirmDelete = (id: string) => {
-    Alert.alert('Xoá giao dịch', 'Bạn có chắc muốn xoá giao dịch này không?', [
+    SoftAlert.alert('Xoá giao dịch', 'Bạn có chắc muốn xoá giao dịch này không?', [
       { text: 'Huỷ', style: 'cancel' },
       {
         text: 'Xoá',

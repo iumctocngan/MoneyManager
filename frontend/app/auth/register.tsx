@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,17 +28,17 @@ export default function RegisterScreen() {
 
   const handleSubmit = async () => {
     if (!name.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ thông tin bắt buộc.');
+      SoftAlert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ thông tin bắt buộc.');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Mật khẩu không khớp', 'Vui lòng nhập lại mật khẩu xác nhận.');
+      SoftAlert.alert('Mật khẩu không khớp', 'Vui lòng nhập lại mật khẩu xác nhận.');
       return;
     }
 
     if (!acceptedTerms) {
-      Alert.alert('Chưa đồng ý điều khoản', 'Bạn cần đồng ý điều khoản dịch vụ để tiếp tục.');
+      SoftAlert.alert('Chưa đồng ý điều khoản', 'Bạn cần đồng ý điều khoản dịch vụ để tiếp tục.');
       return;
     }
 
@@ -49,7 +49,7 @@ export default function RegisterScreen() {
         password,
       });
     } catch (error) {
-      Alert.alert('Đăng ký thất bại', error instanceof Error ? error.message : 'Đã có lỗi xảy ra.');
+      SoftAlert.alert('Đăng ký thất bại', error instanceof Error ? error.message : 'Đã có lỗi xảy ra.');
     }
   };
 

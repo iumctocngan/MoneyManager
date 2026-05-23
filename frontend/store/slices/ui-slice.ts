@@ -78,7 +78,10 @@ export const createUISlice: StateCreator<
       set({ user: me.user, authStatus: 'signed_in' });
       await get().mergeRemoteSnapshot(snapshot);
       set({ isInitialized: true });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.status === 401) {
+        await get().signOut();
+      }
       set({ isInitialized: true });
     } finally {
       set({ isBusy: false });

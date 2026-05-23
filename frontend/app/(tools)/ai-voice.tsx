@@ -1,5 +1,4 @@
 import { SoftBackdrop } from '@/components/ui/soft';
-import { SoftSuccessModal } from '@/components/ui/SoftSuccessModal';
 import { shadow, SoftColors } from '@/constants/design';
 import { Transaction } from '@/constants/types';
 import { useStore } from '@/store/app-store';
@@ -19,7 +18,6 @@ import { router, Stack } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Easing,
   FlatList,
@@ -29,6 +27,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 /**
@@ -81,7 +80,6 @@ export default function AiVoiceScreen() {
   // FIX: Lưu URI sau khi dừng ghi âm để có thể retry
   const [lastAudioUri, setLastAudioUri] = useState<string | null>(null);
   const [transcribedItems, setTranscribedItems] = useState<Partial<Transaction>[]>([]);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const {
     authToken: token,
@@ -149,7 +147,7 @@ export default function AiVoiceScreen() {
     try {
       const { granted } = await requestRecordingPermissionsAsync();
       if (!granted) {
-        Alert.alert('Lỗi', 'Cần cấp quyền microphone để ghi âm');
+        SoftAlert.alert('Lỗi', 'Cần cấp quyền microphone để ghi âm');
         return;
       }
 
@@ -166,7 +164,7 @@ export default function AiVoiceScreen() {
       recorder.record();
     } catch (err) {
       console.error('Không thể bắt đầu ghi âm:', err);
-      Alert.alert('Lỗi', 'Không thể bắt đầu ghi âm');
+      SoftAlert.alert('Lỗi', 'Không thể bắt đầu ghi âm');
     }
   }
 
@@ -187,7 +185,7 @@ export default function AiVoiceScreen() {
     } catch (error: any) {
       setStep('error');
       if (error.status === 429 || error.message?.includes('429')) {
-        Alert.alert('Thông báo', 'Bạn đã hết lượt dùng thử hôm nay. Vui lòng quay lại sau!');
+        SoftAlert.alert('Thông báo', 'Bạn đã hết lượt dùng thử hôm nay. Vui lòng quay lại sau!');
       } else {
         console.error('Lỗi dừng ghi âm:', error);
       }
@@ -220,7 +218,7 @@ export default function AiVoiceScreen() {
       setStep('error');
 
       if (error.status === 429 || error.message?.includes('429')) {
-        Alert.alert('Thông báo', 'Bạn đã hết lượt dùng thử hôm nay. Vui lòng quay lại sau!');
+        SoftAlert.alert('Thông báo', 'Bạn đã hết lượt dùng thử hôm nay. Vui lòng quay lại sau!');
       } else {
         console.error('Lỗi xử lý giọng nói:', error);
         // FIX: Không Alert — dùng hint text để thông báo, tránh interrupt UX
@@ -236,7 +234,7 @@ export default function AiVoiceScreen() {
 
   async function saveTransactions() {
     if (!selectedWalletId) {
-      Alert.alert('Lỗi', 'Vui lòng chọn ví trước khi lưu');
+      SoftAlert.alert('Lỗi', 'Vui lòng chọn ví trước khi lưu');
       return;
     }
 
@@ -254,9 +252,14 @@ export default function AiVoiceScreen() {
       }));
 
       await addTransactionsBatch(transactionsToSave);
-      setShowSuccess(true);
+      SoftAlert.alert(
+        'Thành công',
+        'Đã lưu các giao dịch thành công!',
+        [{ text: 'Tuyệt vời', onPress: () => router.back() }],
+        'success'
+      );
     } catch (error: any) {
-      Alert.alert('Lỗi', error.message || 'Không thể lưu giao dịch');
+      SoftAlert.alert('Lỗi', error.message || 'Không thể lưu giao dịch');
       setStep('idle');
     }
   }
@@ -429,14 +432,6 @@ export default function AiVoiceScreen() {
           </Animated.View>
         </View>
       </SafeAreaView>
-      <SoftSuccessModal
-        visible={showSuccess}
-        message="Đã lưu các giao dịch thành công!"
-        onClose={() => {
-          setShowSuccess(false);
-          router.back();
-        }}
-      />
     </View>
   );
 }

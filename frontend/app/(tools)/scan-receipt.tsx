@@ -1,5 +1,4 @@
 import { SoftBackdrop, SoftCard } from '@/components/ui/soft';
-import { SoftSuccessModal } from '@/components/ui/SoftSuccessModal';
 import { shadow, SoftColors } from '@/constants/design';
 import { Transaction } from '@/constants/types';
 import { useStore } from '@/store/app-store';
@@ -13,7 +12,6 @@ import { router, Stack } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   ScrollView,
   StyleSheet,
@@ -21,6 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // FIX: Thay boolean isProcessing bằng step enum để UI hiển thị đúng trạng thái
@@ -41,7 +40,6 @@ export default function ScanReceiptScreen() {
   // FIX: Lưu lastUri để có thể retry mà không cần chọn lại ảnh
   const [lastUri, setLastUri] = useState<string | null>(null);
   const [scannedItems, setScannedItems] = useState<Partial<Transaction>[]>([]);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const {
     authToken: token,
@@ -59,7 +57,7 @@ export default function ScanReceiptScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Lỗi', 'Cần cấp quyền truy cập thư viện ảnh để thực hiện');
+        SoftAlert.alert('Lỗi', 'Cần cấp quyền truy cập thư viện ảnh để thực hiện');
         return;
       }
 
@@ -74,7 +72,7 @@ export default function ScanReceiptScreen() {
       }
     } catch (err) {
       console.error('Lỗi chọn ảnh:', err);
-      Alert.alert('Lỗi', 'Không thể chọn ảnh');
+      SoftAlert.alert('Lỗi', 'Không thể chọn ảnh');
     }
   }
 
@@ -82,7 +80,7 @@ export default function ScanReceiptScreen() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Lỗi', 'Cần cấp quyền camera để thực hiện');
+        SoftAlert.alert('Lỗi', 'Cần cấp quyền camera để thực hiện');
         return;
       }
 
@@ -96,7 +94,7 @@ export default function ScanReceiptScreen() {
       }
     } catch (err) {
       console.error('Lỗi chụp ảnh:', err);
-      Alert.alert('Lỗi', 'Không thể chụp ảnh');
+      SoftAlert.alert('Lỗi', 'Không thể chụp ảnh');
     }
   }
 
@@ -124,7 +122,7 @@ export default function ScanReceiptScreen() {
       setStep('error');
 
       if (error.status === 429 || error.message?.includes('429')) {
-        Alert.alert('Thông báo', 'Bạn đã hết lượt dùng thử hôm nay. Vui lòng quay lại sau!');
+        SoftAlert.alert('Thông báo', 'Bạn đã hết lượt dùng thử hôm nay. Vui lòng quay lại sau!');
       }
       // FIX: Không Alert cho lỗi khác — hiển thị inline với nút Thử lại thay vì popup
       console.error('Lỗi quét hóa đơn:', error);
@@ -139,7 +137,7 @@ export default function ScanReceiptScreen() {
 
   async function saveTransactions() {
     if (!selectedWalletId) {
-      Alert.alert('Lỗi', 'Vui lòng chọn ví trước khi lưu');
+      SoftAlert.alert('Lỗi', 'Vui lòng chọn ví trước khi lưu');
       return;
     }
 
@@ -157,9 +155,14 @@ export default function ScanReceiptScreen() {
       }));
 
       await addTransactionsBatch(transactionsToSave);
-      setShowSuccess(true);
+      SoftAlert.alert(
+        'Thành công',
+        'Đã lưu giao dịch từ hóa đơn!',
+        [{ text: 'Tuyệt vời', onPress: () => router.back() }],
+        'success'
+      );
     } catch (error: any) {
-      Alert.alert('Lỗi', error.message || 'Không thể lưu giao dịch');
+      SoftAlert.alert('Lỗi', error.message || 'Không thể lưu giao dịch');
       setStep('idle');
     }
   }
@@ -343,14 +346,6 @@ export default function ScanReceiptScreen() {
           </View>
         </View>
       </SafeAreaView>
-      <SoftSuccessModal
-        visible={showSuccess}
-        message="Đã lưu giao dịch từ hóa đơn!"
-        onClose={() => {
-          setShowSuccess(false);
-          router.back();
-        }}
-      />
     </View>
   );
 }

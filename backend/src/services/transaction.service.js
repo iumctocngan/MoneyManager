@@ -74,10 +74,26 @@ export async function listTransactions(userId, filters = {}, executor = query) {
     params.ids = filters.ids;
   }
 
+  if (filters.startDate) {
+    conditions.push('transaction_date >= :startDate');
+    params.startDate = filters.startDate;
+  }
+
+  if (filters.endDate) {
+    conditions.push('transaction_date <= :endDate');
+    params.endDate = filters.endDate;
+  }
+
+  let limitClause = '';
+  if (typeof filters.limit === 'number' && filters.limit > 0) {
+    limitClause = ` LIMIT :limit`;
+    params.limit = Number(filters.limit);
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const rows = await execute(
     executor,
-    `${TRANSACTION_SELECT} ${whereClause} ORDER BY transaction_date DESC, created_at DESC`,
+    `${TRANSACTION_SELECT} ${whereClause} ORDER BY transaction_date DESC, created_at DESC${limitClause}`,
     params
   );
 

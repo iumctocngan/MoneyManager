@@ -1,5 +1,6 @@
 import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,7 +20,18 @@ export default function TransactionDetailScreen() {
   const transaction = transactions.find((item) => item.id === id);
 
   if (!transaction) {
-    return null;
+    return (
+      <View style={styles.root}>
+        <SoftBackdrop />
+        <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Ionicons name="alert-circle-outline" size={64} color={SoftColors.muted} />
+          <Text style={{ fontSize: 18, color: SoftColors.text, marginVertical: 16 }}>Không tìm thấy giao dịch</Text>
+          <TouchableOpacity onPress={() => router.back()} style={{ padding: 12, backgroundColor: SoftColors.primary, borderRadius: 8 }}>
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Quay lại</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      </View>
+    );
   }
 
   const category = getCategoryById(transaction.categoryId);
@@ -31,7 +43,7 @@ export default function TransactionDetailScreen() {
       await deleteTransaction(transaction.id);
       router.back();
     } catch (error) {
-      Alert.alert(
+      SoftAlert.alert(
         'Không thể xoá giao dịch',
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
       );
@@ -39,7 +51,7 @@ export default function TransactionDetailScreen() {
   };
 
   const confirmDelete = () => {
-    Alert.alert('Xoá giao dịch', 'Bạn có chắc muốn xoá giao dịch này không?', [
+    SoftAlert.alert('Xoá giao dịch', 'Bạn có chắc muốn xoá giao dịch này không?', [
       { text: 'Huỷ', style: 'cancel' },
       {
         text: 'Xoá',

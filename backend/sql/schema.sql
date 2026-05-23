@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS budgets (
     ON DELETE CASCADE,
   CONSTRAINT fk_budgets_wallet
     FOREIGN KEY (wallet_id) REFERENCES wallets(id)
-    ON DELETE SET NULL
+    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS transactions (
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     ON DELETE CASCADE,
   CONSTRAINT fk_transactions_to_wallet
     FOREIGN KEY (to_wallet_id) REFERENCES wallets(id)
-    ON DELETE SET NULL
+    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS chat_sessions (

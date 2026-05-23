@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,14 +26,14 @@ export default function LoginScreen() {
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
+      SoftAlert.alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
       return;
     }
 
     try {
       await signIn(email.trim(), password);
     } catch (error) {
-      Alert.alert('Đăng nhập thất bại', error instanceof Error ? error.message : 'Đã có lỗi xảy ra.');
+      SoftAlert.alert('Đăng nhập thất bại', error instanceof Error ? error.message : 'Đã có lỗi xảy ra.');
     }
   };
 
@@ -99,10 +99,18 @@ export default function LoginScreen() {
             <View style={styles.socialWrap}>
               <Text style={styles.socialLabel}>Hoặc đăng nhập bằng</Text>
               <View style={styles.socialRow}>
-                <TouchableOpacity activeOpacity={0.82} style={styles.socialButton}>
+                <TouchableOpacity 
+                  activeOpacity={0.82} 
+                  style={styles.socialButton}
+                  onPress={() => SoftAlert.alert("Tính năng đang phát triển", "Vui lòng đăng nhập bằng email.")}
+                >
                   <Ionicons name="logo-google" size={22} color="#4285F4" />
                 </TouchableOpacity>
-                <TouchableOpacity activeOpacity={0.82} style={styles.socialButton}>
+                <TouchableOpacity 
+                  activeOpacity={0.82} 
+                  style={styles.socialButton}
+                  onPress={() => SoftAlert.alert("Tính năng đang phát triển", "Vui lòng đăng nhập bằng email.")}
+                >
                   <Ionicons name="logo-apple" size={22} color={Colors.text} />
                 </TouchableOpacity>
               </View>

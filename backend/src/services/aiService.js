@@ -11,7 +11,7 @@ import path from 'path';
 const geminiModelCache = {};
 let cachedGroqClient = null;
 
-function getGeminiModel(modelName = 'gemini-2.5-flash') {
+function getGeminiModel(modelName = 'gemini-3.1-flash-lite') {
   if (!geminiModelCache[modelName]) {
     if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY chưa được cấu hình');
     geminiModelCache[modelName] = new ChatGoogleGenerativeAI({
@@ -101,7 +101,7 @@ async function extractTransactionsFromText(transcript) {
   if (!transcript?.trim()) return [];
 
   try {
-    const model = getGeminiModel('gemini-2.5-flash-lite');
+    const model = getGeminiModel('gemini-3.1-flash-lite');
     const today = getVnNow();
 
     const promptTemplate = PromptTemplate.fromTemplate(`
@@ -141,7 +141,7 @@ async function extractTransactionFromReceipt(imagePath, mimeType) {
 
   try {
     const finalMimeType = mimeType || getMimeType(imagePath);
-    const model = getGeminiModel('gemini-2.5-flash');
+    const model = getGeminiModel('gemini-3.1-flash-lite');
     const today = getVnNow();
     const imageBuffer = await fs.promises.readFile(imagePath);
     const base64Image = imageBuffer.toString('base64');

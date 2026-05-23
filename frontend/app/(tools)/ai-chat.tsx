@@ -9,10 +9,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Image,
   Modal,
-  Alert,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '@/store/app-store';
@@ -87,7 +87,7 @@ export default function AIChatScreen() {
   };
 
   const handleDeleteSession = (sessionId: string) => {
-    Alert.alert(
+    SoftAlert.alert(
       'Xóa cuộc trò chuyện',
       'Bạn có chắc muốn xóa cuộc trò chuyện này? Toàn bộ tin nhắn sẽ bị mất.',
       [
@@ -119,7 +119,8 @@ export default function AIChatScreen() {
                     ? `${api.API_BASE_URL}${item.fileUri}` 
                     : item.fileUri 
                 }} 
-                style={styles.previewImage} 
+                style={styles.previewImage}
+                contentFit="cover"
               />
             </View>
           )}

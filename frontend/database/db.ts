@@ -10,7 +10,7 @@ export async function initializeDb(db: SQLite.SQLiteDatabase) {
 
     CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY NOT NULL,
-      amount REAL NOT NULL,
+      amount INTEGER NOT NULL,
       categoryId TEXT NOT NULL,
       type TEXT NOT NULL,
       walletId TEXT NOT NULL,
@@ -23,7 +23,7 @@ export async function initializeDb(db: SQLite.SQLiteDatabase) {
     CREATE TABLE IF NOT EXISTS wallets (
       id TEXT PRIMARY KEY NOT NULL,
       name TEXT NOT NULL,
-      balance REAL NOT NULL,
+      balance INTEGER NOT NULL,
       icon TEXT NOT NULL,
       color TEXT NOT NULL,
       includeInTotal INTEGER NOT NULL,
@@ -33,7 +33,7 @@ export async function initializeDb(db: SQLite.SQLiteDatabase) {
     CREATE TABLE IF NOT EXISTS budgets (
       id TEXT PRIMARY KEY NOT NULL,
       categoryId TEXT NOT NULL,
-      amount REAL NOT NULL,
+      amount INTEGER NOT NULL,
       period TEXT NOT NULL DEFAULT 'monthly',
       startDate TEXT NOT NULL,
       endDate TEXT NOT NULL,

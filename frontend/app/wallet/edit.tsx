@@ -10,7 +10,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function EditWalletScreen() {
@@ -35,7 +35,7 @@ export default function EditWalletScreen() {
 
   useEffect(() => {
     if (!wallet) {
-      Alert.alert('Lỗi', 'Không tìm thấy ví', [
+      SoftAlert.alert('Lỗi', 'Không tìm thấy ví', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     }
@@ -45,7 +45,7 @@ export default function EditWalletScreen() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Thiếu tên ví', 'Vui lòng nhập tên ví.');
+      SoftAlert.alert('Thiếu tên ví', 'Vui lòng nhập tên ví.');
       return;
     }
 
@@ -59,7 +59,7 @@ export default function EditWalletScreen() {
       });
       router.back();
     } catch (error) {
-      Alert.alert(
+      SoftAlert.alert(
         'Không thể cập nhật ví',
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
       );

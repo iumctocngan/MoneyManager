@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,7 +33,7 @@ export default function AddWalletScreen() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Thiếu tên ví', 'Vui lòng nhập tên ví.');
+      SoftAlert.alert('Thiếu tên ví', 'Vui lòng nhập tên ví.');
       return;
     }
 
@@ -50,7 +50,7 @@ export default function AddWalletScreen() {
       });
       router.back();
     } catch (error) {
-      Alert.alert(
+      SoftAlert.alert(
         'Không thể tạo ví',
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
       );

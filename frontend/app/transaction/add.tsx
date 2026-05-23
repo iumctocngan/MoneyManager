@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -21,6 +21,7 @@ import { SoftColors } from '@/constants/design';
 import { GlowButton, SoftBackdrop, SoftCard, softInputStyles } from '@/components/ui/soft';
 import { formatNumber, generateId } from '@/utils';
 import { getCategoryIconName, getWalletIconName } from '@/utils/iconography';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function AddTransactionScreen() {
   const { wallets } = useStore();
@@ -30,7 +31,8 @@ export default function AddTransactionScreen() {
   const [note, setNote] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedWallet, setSelectedWallet] = useState(wallets[0]?.id || '');
-  const [date] = useState(new Date());
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 
@@ -40,17 +42,17 @@ export default function AddTransactionScreen() {
 
   const handleSave = async () => {
     if (!amount || parseInt(amount, 10) === 0) {
-      Alert.alert('Thiếu số tiền', 'Vui lòng nhập số tiền giao dịch.');
+      SoftAlert.alert('Thiếu số tiền', 'Vui lòng nhập số tiền giao dịch.');
       return;
     }
 
     if (!selectedCategory) {
-      Alert.alert('Thiếu danh mục', 'Vui lòng chọn danh mục.');
+      SoftAlert.alert('Thiếu danh mục', 'Vui lòng chọn danh mục.');
       return;
     }
 
     if (!selectedWallet) {
-      Alert.alert('Thiếu ví', 'Vui lòng chọn ví.');
+      SoftAlert.alert('Thiếu ví', 'Vui lòng chọn ví.');
       return;
     }
 
@@ -67,7 +69,7 @@ export default function AddTransactionScreen() {
       });
       router.back();
     } catch (error) {
-      Alert.alert(
+      SoftAlert.alert(
         'Không thể tạo giao dịch',
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
       );
@@ -142,7 +144,7 @@ export default function AddTransactionScreen() {
             </View>
 
             <SoftCard style={styles.infoCard}>
-              <View style={styles.infoRow}>
+              <TouchableOpacity activeOpacity={0.8} style={styles.infoRow} onPress={() => setShowDatePicker(true)}>
                 <Ionicons name="calendar-outline" size={18} color={SoftColors.muted} />
                 <Text style={styles.infoText}>
                   {date.toLocaleDateString('vi-VN', {
@@ -152,8 +154,20 @@ export default function AddTransactionScreen() {
                     year: 'numeric',
                   })}
                 </Text>
-              </View>
+              </TouchableOpacity>
             </SoftCard>
+            
+            {showDatePicker && (
+              <DateTimePicker
+                value={date}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowDatePicker(false);
+                  if (selectedDate) setDate(selectedDate);
+                }}
+              />
+            )}
 
             <Text style={styles.sectionTitle}>Chọn ví</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletRow}>

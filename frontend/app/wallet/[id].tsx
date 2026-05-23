@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -40,7 +41,7 @@ export default function WalletDetailScreen() {
       await deleteWallet(id);
       router.back();
     } catch (error) {
-      Alert.alert(
+      SoftAlert.alert(
         'Không thể xoá ví',
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
       );
@@ -48,7 +49,7 @@ export default function WalletDetailScreen() {
   };
 
   const confirmDelete = () => {
-    Alert.alert(
+    SoftAlert.alert(
       'Xoá ví',
       `Bạn có chắc muốn xoá ví "${wallet.name}"? Tất cả giao dịch liên quan cũng sẽ bị xoá.`,
       [

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { execute, query } from '../config/database.js';
+import { execute, query, withTransaction } from '../config/database.js';
 import { toMysqlDateTime } from '../utils/datetime.js';
 import { HttpError } from '../utils/http-error.js';
 import { mapBudget } from '../utils/serializers.js';
@@ -92,45 +92,48 @@ export async function createBudget(userId, payload) {
 }
 
 export async function updateBudget(userId, id, payload, normalizeFullPayload) {
-  const current = await getBudgetById(userId, id);
+  return withTransaction(async (connection) => {
+    const current = await getBudgetById(userId, id, connection);
 
-  if (!current) {
-    throw new HttpError(404, 'Budget not found.');
-  }
-
-  const nextBudget = normalizeFullPayload({ ...current, ...payload });
-  const mysqlStartDate = toMysqlDateTime(nextBudget.startDate);
-  const mysqlEndDate = toMysqlDateTime(nextBudget.endDate);
-
-  if (nextBudget.walletId) {
-    await assertWalletExists(query, userId, nextBudget.walletId, 'walletId');
-  }
-
-  await query(
-    `
-      UPDATE budgets
-      SET
-        category_id = :categoryId,
-        amount = :amount,
-        period = :period,
-        start_date = :startDate,
-        end_date = :endDate,
-        wallet_id = :walletId
-      WHERE user_id = :userId AND id = :id
-    `,
-    {
-      id,
-      userId,
-      categoryId: nextBudget.categoryId,
-      amount: nextBudget.amount,
-      period: nextBudget.period,
-      startDate: mysqlStartDate,
-      endDate: mysqlEndDate,
-      walletId: nextBudget.walletId ?? null,
+    if (!current) {
+      throw new HttpError(404, 'Budget not found.');
     }
-  );
 
-  return getBudgetById(userId, id);
+    const nextBudget = normalizeFullPayload({ ...current, ...payload });
+    const mysqlStartDate = toMysqlDateTime(nextBudget.startDate);
+    const mysqlEndDate = toMysqlDateTime(nextBudget.endDate);
+
+    if (nextBudget.walletId) {
+      await assertWalletExists(connection, userId, nextBudget.walletId, 'walletId');
+    }
+
+    await execute(
+      connection,
+      `
+        UPDATE budgets
+        SET
+          category_id = :categoryId,
+          amount = :amount,
+          period = :period,
+          start_date = :startDate,
+          end_date = :endDate,
+          wallet_id = :walletId
+        WHERE user_id = :userId AND id = :id
+      `,
+      {
+        id,
+        userId,
+        categoryId: nextBudget.categoryId,
+        amount: nextBudget.amount,
+        period: nextBudget.period,
+        startDate: mysqlStartDate,
+        endDate: mysqlEndDate,
+        walletId: nextBudget.walletId ?? null,
+      }
+    );
+
+    return getBudgetById(userId, id, connection);
+  });
 }
 
 export async function deleteBudget(userId, id) {

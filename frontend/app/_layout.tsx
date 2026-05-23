@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SoftAlertComponent } from '@/components/ui/SoftAlert';
 
 export default function RootLayout() {
   const isHydrated = useStore((state) => state.isHydrated);
@@ -86,6 +87,7 @@ export default function RootLayout() {
             </Stack>
           )}
           <StatusBar style="auto" />
+          <SoftAlertComponent />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

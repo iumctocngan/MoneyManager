@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -21,12 +21,7 @@ export default function ForgotPasswordScreen() {
   const [sent, setSent] = useState(false);
 
   const handleSend = () => {
-    if (!email.trim()) {
-      Alert.alert('Thiếu email', 'Vui lòng nhập email để nhận liên kết đặt lại mật khẩu.');
-      return;
-    }
-
-    setSent(true);
+    SoftAlert.alert("Tính năng đang phát triển", "Vui lòng liên hệ quản trị viên để được hỗ trợ.");
   };
 
   return (

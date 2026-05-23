@@ -107,7 +107,7 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
         content: m.content,
       }));
 
-      const { response, sessionId } = await api.aiChat(
+      const { response, sessionId, dataModified } = await api.aiChat(
         authToken,
         message,
         history,
@@ -146,7 +146,7 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
       }
 
       // Refresh state if any tool modified data
-      if (response.includes('Đã thêm') || response.includes('giao dịch từ')) {
+      if (dataModified) {
         await get().refreshState();
       }
     } catch (error: any) {
