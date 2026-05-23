@@ -184,11 +184,7 @@ export default function AiVoiceScreen() {
       await doProcess(uri);
     } catch (error: any) {
       setStep('error');
-      if (error.status === 429 || error.message?.includes('429')) {
-        SoftAlert.alert('Thông báo', 'Bạn đã hết lượt dùng thử hôm nay. Vui lòng quay lại sau!');
-      } else {
-        console.error('Lỗi dừng ghi âm:', error);
-      }
+      console.error('Lỗi dừng ghi âm:', error);
     }
   }
 
@@ -216,13 +212,8 @@ export default function AiVoiceScreen() {
     } catch (error: any) {
       // FIX: Không clear transcribedItems khi lỗi
       setStep('error');
-
-      if (error.status === 429 || error.message?.includes('429')) {
-        SoftAlert.alert('Thông báo', 'Bạn đã hết lượt dùng thử hôm nay. Vui lòng quay lại sau!');
-      } else {
-        console.error('Lỗi xử lý giọng nói:', error);
-        // FIX: Không Alert — dùng hint text để thông báo, tránh interrupt UX
-      }
+      console.error('Lỗi xử lý giọng nói:', error);
+      // FIX: Không Alert — dùng hint text để thông báo, tránh interrupt UX
     }
   }
 
