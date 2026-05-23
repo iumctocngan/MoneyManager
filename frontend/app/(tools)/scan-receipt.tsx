@@ -120,10 +120,6 @@ export default function ScanReceiptScreen() {
     } catch (error: any) {
       // FIX: Không clear scannedItems khi lỗi — giữ kết quả scan trước đó
       setStep('error');
-
-      if (error.status === 429 || error.message?.includes('429')) {
-        SoftAlert.alert('Thông báo', 'Bạn đã hết lượt dùng thử hôm nay. Vui lòng quay lại sau!');
-      }
       // FIX: Không Alert cho lỗi khác — hiển thị inline với nút Thử lại thay vì popup
       console.error('Lỗi quét hóa đơn:', error);
     }
