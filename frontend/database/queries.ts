@@ -177,8 +177,8 @@ export const getChatSessionsSqlite = async (): Promise<ChatSession[]> => {
 export const saveChatMessageSqlite = async (message: ChatMessage, sessionId: string) => {
   const db = await getDbConnection();
   await db.runAsync(
-    'INSERT OR REPLACE INTO chat_messages (id, sessionId, role, content, timestamp, fileUri) VALUES (?, ?, ?, ?, ?, ?)',
-    [message.id, sessionId, message.role, message.content, message.timestamp, message.fileUri || null]
+    'INSERT OR REPLACE INTO chat_messages (id, sessionId, role, content, timestamp) VALUES (?, ?, ?, ?, ?)',
+    [message.id, sessionId, message.role, message.content, message.timestamp]
   );
 };
 
@@ -188,8 +188,8 @@ export const upsertChatMessagesSqlite = async (messages: ChatMessage[], sessionI
   await db.withTransactionAsync(async () => {
     for (const m of messages) {
       await db.runAsync(
-        'INSERT OR REPLACE INTO chat_messages (id, sessionId, role, content, timestamp, fileUri) VALUES (?, ?, ?, ?, ?, ?)',
-        [m.id, sessionId, m.role, m.content, m.timestamp, m.fileUri || null]
+        'INSERT OR REPLACE INTO chat_messages (id, sessionId, role, content, timestamp) VALUES (?, ?, ?, ?, ?)',
+        [m.id, sessionId, m.role, m.content, m.timestamp]
       );
     }
   });
@@ -202,8 +202,7 @@ export const getChatMessagesSqlite = async (sessionId: string): Promise<ChatMess
     id: r.id,
     role: r.role as any,
     content: r.content,
-    timestamp: r.timestamp,
-    fileUri: r.fileUri
+    timestamp: r.timestamp
   }));
 };
 

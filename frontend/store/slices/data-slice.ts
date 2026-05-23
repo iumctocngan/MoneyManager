@@ -304,7 +304,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
         transactions: snapshot.transactions,
         wallets: snapshot.wallets,
         budgets: snapshot.budgets,
-        settings: snapshot.settings,
+
         selectedWalletId: normalizeSelectedWallet(
           state.selectedWalletId,
           snapshot.wallets

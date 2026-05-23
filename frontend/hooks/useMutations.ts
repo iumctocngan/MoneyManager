@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useStore } from '@/store/app-store';
-import { api } from '@/utils/api';
-import { AppSettings, Transaction } from '@/constants/types';
+import { Transaction } from '@/constants/types';
 
 /**
  * Hook quản lý và thực hiện các đột biến (mutations) dữ liệu,
@@ -56,24 +55,7 @@ export function useMutations() {
     return run(() => addTransaction(tx));
   }, [run, addTransaction]);
 
-  // Cập nhật cấu hình ứng dụng và đồng bộ hóa với Server
-  const updateSettings = useCallback(async (nextSettings: Partial<AppSettings>) => {
-    const token = useStore.getState().authToken;
-    if (!token) {
-      throw new Error('Bạn cần đăng nhập để đồng bộ dữ liệu.');
-    }
 
-    try {
-      // Gọi API cập nhật lên cloud
-      const updatedSettings = await api.updateSettings(token, nextSettings);
-      useStore.setState({ settings: updatedSettings });
-    } catch {
-      // Nếu mất mạng hoặc API lỗi, lưu tạm thời tại local store
-      useStore.setState((state) => ({
-        settings: { ...state.settings, ...nextSettings },
-      }));
-    }
-  }, []);
 
   // Trả về một object đã được memoize để tránh gây re-render không cần thiết cho component gọi hook
   return useMemo(() => ({
@@ -95,8 +77,6 @@ export function useMutations() {
     addBudget: (budget: Parameters<typeof addBudget>[0]) => run(() => addBudget(budget)),
     updateBudget: (id: string, budget: Parameters<typeof updateBudget>[1]) => run(() => updateBudget(id, budget)),
     deleteBudget: (id: string) => run(() => deleteBudget(id)),
-    
-    updateSettings,
   }), [
     pendingCount,
     run,
@@ -111,6 +91,5 @@ export function useMutations() {
     addBudget,
     updateBudget,
     deleteBudget,
-    updateSettings,
   ]);
 }

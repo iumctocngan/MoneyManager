@@ -90,28 +90,7 @@ export async function registerUser(payload) {
       }
     );
 
-    await execute(
-      connection,
-      `
-        INSERT INTO app_settings (
-          user_id,
-          language,
-          theme,
-          first_day_of_month,
-          show_balance,
-          biometric_enabled
-        )
-        VALUES (
-          :userId,
-          'vi',
-          'light',
-          1,
-          TRUE,
-          FALSE
-        )
-      `,
-      { userId }
-    );
+
 
     const user = await getUserById(userId, connection);
     return buildAuthResponse(user);

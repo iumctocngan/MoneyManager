@@ -79,7 +79,6 @@ export const useStore = create<AppState>()(
       name: 'money-lover-storage',
       storage: createJSONStorage(() => customStorage),
       partialize: (state) => ({
-        settings: state.settings,
         selectedWalletId: state.selectedWalletId,
         authToken: state.authToken,
         user: state.user,

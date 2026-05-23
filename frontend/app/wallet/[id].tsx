@@ -17,7 +17,7 @@ import { TransactionItem } from '@/components/TransactionItem';
 
 export default function WalletDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { wallets, transactions, getCategoryById, settings } = useStore();
+  const { wallets, transactions, getCategoryById } = useStore();
   const { deleteWallet } = useMutations();
 
   const wallet = wallets.find((item) => item.id === id);
@@ -141,7 +141,7 @@ export default function WalletDetailScreen() {
                     wallet={sourceWallet}
                     destWallet={destWallet}
                     category={category}
-                    settings={settings}
+
                     isLast={index === walletTransactions.length - 1}
                     perspectiveWalletId={id}
                     onPress={() => router.push(`/transaction/${transaction.id}`)}

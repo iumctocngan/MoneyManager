@@ -60,15 +60,7 @@ export function mapBudget(row) {
   };
 }
 
-export function mapSettings(row) {
-  return {
-    language: row.language,
-    theme: row.theme,
-    firstDayOfMonth: Number(row.first_day_of_month),
-    showBalance: Boolean(row.show_balance),
-    biometricEnabled: Boolean(row.biometric_enabled),
-  };
-}
+
 
 export function mapUser(row) {
   return {

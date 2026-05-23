@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '@/store/app-store';
 import { Colors, SoftColors, shadow } from '@/constants/design';
 import { ChatMessage } from '@/store/types';
-import * as ImagePicker from 'expo-image-picker';
+
 import { Stack, router } from 'expo-router';
 import { api } from '@/utils/api';
 
@@ -53,17 +53,6 @@ export default function AIChatScreen() {
     await sendChatMessage(msg);
   };
 
-  const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      const uri = result.assets[0].uri;
-      await sendChatMessage('Quét hóa đơn này giúp tôi', uri);
-    }
-  };
 
   useEffect(() => {
     if (chatMessages.length > 0) {
@@ -111,19 +100,7 @@ export default function AIChatScreen() {
           </View>
         )}
         <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.aiBubble]}>
-          {item.fileUri && (
-            <View style={styles.filePreview}>
-              <Image 
-                source={{ 
-                  uri: item.fileUri.startsWith('/uploads/') 
-                    ? `${api.API_BASE_URL}${item.fileUri}` 
-                    : item.fileUri 
-                }} 
-                style={styles.previewImage}
-                contentFit="cover"
-              />
-            </View>
-          )}
+
           <Text style={[styles.messageText, isUser ? styles.userText : styles.aiText]}>
             {item.content}
           </Text>
@@ -184,10 +161,6 @@ export default function AIChatScreen() {
           )}
 
           <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-            <TouchableOpacity style={styles.toolButton} onPress={handlePickImage}>
-              <Ionicons name="image-outline" size={24} color={Colors.textSecondary} />
-            </TouchableOpacity>
-            
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}

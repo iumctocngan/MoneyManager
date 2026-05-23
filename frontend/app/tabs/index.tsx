@@ -31,7 +31,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const EXPENSE_CHART_COLORS = ['#FAD02C', Colors.expense, SoftColors.mint, SoftColors.purple];
 
 export default function HomeScreen() {
-  const { wallets, transactions, budgets, getTotalBalance, getCategoryById, settings, refreshState, user } = useStore();
+  const { wallets, transactions, budgets, getTotalBalance, getCategoryById, refreshState, user } = useStore();
   const [showBalance, setShowBalance] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -353,7 +353,7 @@ export default function HomeScreen() {
                     wallet={wallet}
                     destWallet={destWallet}
                     category={category}
-                    settings={settings}
+
                     isLast={index === recentTransactions.length - 1}
                     onPress={() => router.push(`/transaction/${transaction.id}`)}
                     showDate

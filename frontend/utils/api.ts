@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { AppSettings, AppSnapshot, AuthResponse, AuthUser, Budget, Transaction, Wallet } from '@/constants/types';
+import { AppSnapshot, AuthResponse, AuthUser, Budget, Transaction, Wallet } from '@/constants/types';
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
@@ -243,13 +243,7 @@ export const api = {
       token,
     });
   },
-  updateSettings(token: string, settings: Partial<AppSettings>) {
-    return request<AppSettings>('/api/settings', {
-      method: 'PUT',
-      token,
-      body: settings,
-    });
-  },
+
   async uploadAudio(token: string, audioUri: string) {
     try {
       const response = await FileSystem.uploadAsync(
@@ -323,54 +317,13 @@ export const api = {
     }
   },
 
-  async aiChat(token: string, message: string, history: any[], fileUri?: string, sessionId?: string, signal?: AbortSignal) {
-    if (fileUri) {
-      try {
-        const parameters: any = {
-          message,
-          history: JSON.stringify(history),
-        };
-        if (sessionId) parameters.sessionId = sessionId;
-
-        const response = await FileSystem.uploadAsync(
-          `${API_BASE_URL}/api/ai/chat`,
-          fileUri,
-          {
-            httpMethod: 'POST',
-            uploadType: 1, // FileSystemUploadType.MULTIPART
-            fieldName: 'file',
-            parameters,
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const isOk = response.status >= 200 && response.status < 300;
-        let payload: any = null;
-        try {
-          payload = JSON.parse(response.body);
-        } catch {
-          payload = { message: response.body };
-        }
-
-        if (!isOk) {
-          throw new ApiError(payload?.error?.message || 'Chat failed', response.status);
-        }
-
-        return payload.data as { response: string; sessionId: string; dataModified?: boolean };
-      } catch (e: any) {
-        if (e instanceof ApiError) throw e;
-        throw new ApiError(e.message || 'Network request failed', 0);
-      }
-    } else {
-      return request<{ response: string; sessionId: string; dataModified?: boolean }>('/api/ai/chat', {
-        method: 'POST',
-        token,
-        body: { message, history, sessionId },
-        signal,
-      });
-    }
+  async aiChat(token: string, message: string, history: any[], sessionId?: string, signal?: AbortSignal) {
+    return request<{ response: string; sessionId: string; dataModified?: boolean }>('/api/ai/chat', {
+      method: 'POST',
+      token,
+      body: { message, history, sessionId },
+      signal,
+    });
   },
 
   listChatSessions(token: string) {

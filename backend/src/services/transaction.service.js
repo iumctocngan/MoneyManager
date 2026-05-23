@@ -86,8 +86,7 @@ export async function listTransactions(userId, filters = {}, executor = query) {
 
   let limitClause = '';
   if (typeof filters.limit === 'number' && filters.limit > 0) {
-    limitClause = ` LIMIT :limit`;
-    params.limit = Number(filters.limit);
+    limitClause = ` LIMIT ${Number(filters.limit)}`;
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

@@ -1,13 +1,12 @@
 import { AppSnapshot, Wallet } from '@/constants/types';
 
 export function snapshotFromState(
-  state: Pick<any, 'wallets' | 'transactions' | 'budgets' | 'settings'>
+  state: Pick<any, 'wallets' | 'transactions' | 'budgets'>
 ): AppSnapshot {
   return {
     wallets: state.wallets,
     transactions: state.transactions,
     budgets: state.budgets,
-    settings: state.settings,
   };
 }
 

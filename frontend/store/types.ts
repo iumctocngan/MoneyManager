@@ -1,5 +1,4 @@
 import {
-  AppSettings,
   AuthUser,
   Budget,
   Transaction,
@@ -29,7 +28,7 @@ export interface ChatSlice {
   chatMessages: ChatMessage[];
   chatSessions: ChatSession[];
   currentSessionId: string | null;
-  sendChatMessage: (message: string, fileUri?: string) => Promise<void>;
+  sendChatMessage: (message: string) => Promise<void>;
   stopChat: () => void;
   listSessions: () => Promise<void>;
   createNewSession: () => void;
@@ -46,7 +45,6 @@ export interface AppState extends ChatSlice {
   pendingMutations: PendingMutation[];
   
   // --- UI & Auth State ---
-  settings: AppSettings;
   selectedWalletId: string | null;
   authToken: string | null;
   user: AuthUser | null;
@@ -102,7 +100,6 @@ export interface AppState extends ChatSlice {
   deleteBudgetLocally: (id: string) => Promise<void>;
   
   setSelectedWallet: (id: string | null) => void;
-  updateSettings: (settings: Partial<AppSettings>) => void;
   setAiAssistantEnabled: (enabled: boolean) => void;
 
   // --- Getters ---

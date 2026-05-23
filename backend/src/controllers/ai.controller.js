@@ -1,6 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-import sharp from 'sharp';
 import { aiService } from '../services/aiService.js';
 import * as aiAgent from '../services/aiAgent.js';
 import * as chatService from '../services/chat.service.js';
@@ -57,52 +54,10 @@ export const chat = async (req, res) => {
       sessionId = await chatService.createSession(userId, title);
     }
 
-    // 2. Handle file persistence
-    let fileUri = null;
-    if (req.file) {
-      const uploadsDir = path.join(process.cwd(), 'uploads');
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-      
-      const isImage = req.file.mimetype.startsWith('image/');
-      
-      if (isImage) {
-        const originalNameParsed = path.parse(req.file.originalname);
-        const fileName = `${Date.now()}-${originalNameParsed.name}.webp`;
-        const permanentPath = path.join(uploadsDir, fileName);
-        
-        // Compress and convert to WebP
-        await sharp(req.file.path)
-          .webp({ quality: 80 })
-          .toFile(permanentPath);
-          
-        // Delete original temp file
-        try {
-          fs.unlinkSync(req.file.path);
-        } catch (unlinkError) {
-          console.warn('Failed to delete temp file:', unlinkError);
-        }
-        
-        fileUri = `/uploads/${fileName}`;
-        req.file.path = permanentPath;
-        req.file.mimetype = 'image/webp';
-      } else {
-        const fileName = `${Date.now()}-${req.file.originalname}`;
-        const permanentPath = path.join(uploadsDir, fileName);
-        fs.renameSync(req.file.path, permanentPath);
-        fileUri = `/uploads/${fileName}`;
-        req.file.path = permanentPath;
-      }
-    }
-
-    await chatService.saveMessage(userId, sessionId, 'user', message, fileUri);
+    await chatService.saveMessage(userId, sessionId, 'user', message);
 
     // 3. Get AI Response
-    const extraContext = {};
-    if (req.file && req.file.mimetype.startsWith('image/')) {
-      extraContext.imageFilePath = req.file.path;
-    }
-
-    const result = await aiAgent.chatWithAI(userId, sessionId, message, extraContext);
+    const result = await aiAgent.chatWithAI(userId, sessionId, message);
 
     // 4. Save AI Response
     await chatService.saveMessage(userId, sessionId, 'assistant', result.text);

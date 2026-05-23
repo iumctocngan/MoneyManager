@@ -24,7 +24,7 @@ import { useMonthTransactions } from '@/hooks/useTransactions';
 import { TransactionItem } from '@/components/TransactionItem';
 
 export default function TransactionsScreen() {
-  const { wallets, getCategoryById, settings } = useStore();
+  const { wallets, getCategoryById } = useStore();
   const { deleteTransaction } = useMutations();
   const [selectedType, setSelectedType] = useState<'all' | 'income' | 'expense'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -273,7 +273,7 @@ export default function TransactionsScreen() {
                         wallet={wallet}
                         destWallet={destWallet}
                         category={category}
-                        settings={settings}
+
                         isLast={index === filteredTransactions.length - 1}
                         onPress={() => router.push(`/transaction/${transaction.id}`)}
                       />

@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Transaction, Wallet, AppSettings } from '@/constants/types';
+import { Transaction, Wallet } from '@/constants/types';
 import { Colors, SoftColors } from '@/constants/design';
 import { formatCurrency, formatDate } from '@/utils';
 import { getCategoryIconName } from '@/utils/iconography';
@@ -11,7 +11,7 @@ interface TransactionItemProps {
   wallet: Wallet | undefined;
   destWallet?: Wallet | null;
   category: any;
-  settings: AppSettings;
+
   isLast?: boolean;
   onPress: () => void;
   showDate?: boolean;
@@ -23,7 +23,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
   wallet,
   destWallet,
   category,
-  settings,
+
   isLast,
   onPress,
   showDate = false,

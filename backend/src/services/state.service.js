@@ -2,23 +2,20 @@ import { randomUUID } from 'node:crypto';
 import { execute, withTransaction } from '../config/database.js';
 import { toMysqlDateTime } from '../utils/datetime.js';
 import { listBudgets } from './budget.service.js';
-import { getSettings } from './settings.service.js';
 import { listTransactions } from './transaction.service.js';
 import { listWallets } from './wallet.service.js';
 
 export async function getStateSnapshot(userId) {
-  const [wallets, transactions, budgets, settings] = await Promise.all([
+  const [wallets, transactions, budgets] = await Promise.all([
     listWallets(userId),
     listTransactions(userId),
     listBudgets(userId),
-    getSettings(userId),
   ]);
 
   return {
     wallets,
     transactions,
     budgets,
-    settings,
   };
 }
 
@@ -27,41 +24,6 @@ export async function importStateSnapshot(userId, snapshot) {
     await execute(connection, 'DELETE FROM transactions WHERE user_id = :userId', { userId });
     await execute(connection, 'DELETE FROM budgets WHERE user_id = :userId', { userId });
     await execute(connection, 'DELETE FROM wallets WHERE user_id = :userId', { userId });
-    await execute(connection, 'DELETE FROM app_settings WHERE user_id = :userId', { userId });
-
-    const settings = {
-      language: snapshot.settings.language ?? 'vi',
-      theme: snapshot.settings.theme ?? 'light',
-      firstDayOfMonth: snapshot.settings.firstDayOfMonth ?? 1,
-      showBalance: snapshot.settings.showBalance ?? true,
-      biometricEnabled: snapshot.settings.biometricEnabled ?? false,
-    };
-
-    await execute(
-      connection,
-      `
-        INSERT INTO app_settings (
-          user_id,
-          language,
-          theme,
-          first_day_of_month,
-          show_balance,
-          biometric_enabled
-        )
-        VALUES (
-          :userId,
-          :language,
-          :theme,
-          :firstDayOfMonth,
-          :showBalance,
-          :biometricEnabled
-        )
-      `,
-      {
-        ...settings,
-        userId,
-      }
-    );
 
     for (const wallet of snapshot.wallets) {
       const id = wallet.id ?? randomUUID();
@@ -74,7 +36,6 @@ export async function importStateSnapshot(userId, snapshot) {
             id,
             user_id,
             name,
-            opening_balance,
             balance,
             color,
             icon,
@@ -85,7 +46,6 @@ export async function importStateSnapshot(userId, snapshot) {
             :id,
             :userId,
             :name,
-            :openingBalance,
             :balance,
             :color,
             :icon,
@@ -97,7 +57,6 @@ export async function importStateSnapshot(userId, snapshot) {
           id,
           userId,
           name: wallet.name,
-          openingBalance: wallet.balance,
           balance: wallet.balance,
           color: wallet.color,
           icon: wallet.icon,

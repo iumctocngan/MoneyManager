@@ -57,7 +57,6 @@ export async function initializeDb(db: SQLite.SQLiteDatabase) {
       role TEXT NOT NULL,
       content TEXT NOT NULL,
       timestamp TEXT NOT NULL,
-      fileUri TEXT,
       FOREIGN KEY(sessionId) REFERENCES chat_sessions(id) ON DELETE CASCADE
     );
 

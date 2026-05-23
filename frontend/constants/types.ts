@@ -42,13 +42,7 @@ export interface Budget {
   walletId?: string;
 }
 
-export interface AppSettings {
-  language: string;
-  theme: 'light' | 'dark' | 'auto';
-  firstDayOfMonth: number;
-  showBalance: boolean;
-  biometricEnabled: boolean;
-}
+
 
 export interface AuthUser {
   id: string;
@@ -63,7 +57,6 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
-  fileUri?: string;
 }
 
 export interface ChatSession {
@@ -81,7 +74,6 @@ export interface AppSnapshot {
   wallets: Wallet[];
   transactions: Transaction[];
   budgets: Budget[];
-  settings: AppSettings;
 }
 
 export type NotificationType =

@@ -59,7 +59,6 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
           role: m.role,
           content: m.content,
           timestamp: m.created_at,
-          fileUri: m.file_uri,
         }));
 
         set({ chatMessages: mappedMessages });
@@ -81,7 +80,7 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
     set({ chatMessages: [], currentSessionId: null });
   },
 
-  sendChatMessage: async (message: string, fileUri?: string) => {
+  sendChatMessage: async (message: string) => {
     const { authToken, chatMessages, currentSessionId } = get();
     if (!authToken) return;
 
@@ -90,7 +89,6 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
       role: 'user',
       content: message,
       timestamp: new Date().toISOString(),
-      fileUri,
     };
 
     set((state) => ({
@@ -111,7 +109,6 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
         authToken,
         message,
         history,
-        fileUri,
         currentSessionId || undefined,
         chatAbortController.signal
       );

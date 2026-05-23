@@ -341,48 +341,7 @@ export function normalizeBudgetPayload(payload, { partial = false } = {}) {
   return normalized;
 }
 
-export function normalizeSettingsPayload(payload, { partial = false } = {}) {
-  ensureObject(payload);
 
-  const result = {};
-
-
-
-  if (!partial || hasOwn(payload, 'language')) {
-    result.language = parseString(payload.language, 'language', {
-      required: !partial,
-      maxLength: 10,
-    });
-  }
-
-  if (!partial || hasOwn(payload, 'theme')) {
-    result.theme = parseEnum(payload.theme, 'theme', ['light', 'dark', 'auto'], {
-      required: !partial,
-    });
-  }
-
-  if (!partial || hasOwn(payload, 'firstDayOfMonth')) {
-    result.firstDayOfMonth = parseNumber(payload.firstDayOfMonth, 'firstDayOfMonth', {
-      required: !partial,
-      integer: true,
-      min: 1,
-    });
-  }
-
-  if (!partial || hasOwn(payload, 'showBalance')) {
-    result.showBalance = parseBoolean(payload.showBalance, 'showBalance', {
-      required: !partial,
-    });
-  }
-
-  if (!partial || hasOwn(payload, 'biometricEnabled')) {
-    result.biometricEnabled = parseBoolean(payload.biometricEnabled, 'biometricEnabled', {
-      required: !partial,
-    });
-  }
-
-  return stripUndefined(result);
-}
 
 export function normalizeStateSnapshot(payload) {
   ensureObject(payload, 'Request body');
@@ -405,7 +364,6 @@ export function normalizeStateSnapshot(payload) {
       normalizeTransactionPayload(transaction)
     ),
     budgets: payload.budgets.map((budget) => normalizeBudgetPayload(budget)),
-    settings: normalizeSettingsPayload(payload.settings ?? {}, { partial: true }),
   };
 }
 

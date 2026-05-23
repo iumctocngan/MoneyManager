@@ -3,10 +3,9 @@ import { AppState } from '../types';
 import { api } from '@/utils/api';
 import { getSnapshotFromSqlite } from '@/database/queries';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants';
-import { AppSettings, Transaction, Wallet } from '@/constants/types';
+import { Transaction, Wallet } from '@/constants/types';
 
 export interface UISlice {
-  settings: AppSettings;
   selectedWalletId: string | null;
   isHydrated: boolean;
   isInitialized: boolean;
@@ -16,7 +15,6 @@ export interface UISlice {
   setHydrated: () => void;
   initializeApp: () => Promise<void>;
   setSelectedWallet: (id: string | null) => void;
-  updateSettings: (settings: Partial<AppSettings>) => void;
   setAiAssistantEnabled: (enabled: boolean) => void;
 
   getTotalBalance: () => number;
@@ -27,13 +25,7 @@ export interface UISlice {
   getBudgetProgress: (budgetId: string) => number;
 }
 
-const DEFAULT_SETTINGS: AppSettings = {
-  language: 'vi',
-  theme: 'light',
-  firstDayOfMonth: 1,
-  showBalance: true,
-  biometricEnabled: false,
-};
+
 
 export const createUISlice: StateCreator<
   AppState,
@@ -41,7 +33,6 @@ export const createUISlice: StateCreator<
   [],
   UISlice
 > = (set, get) => ({
-  settings: DEFAULT_SETTINGS,
   selectedWalletId: null,
   isHydrated: false,
   isInitialized: false,
@@ -92,10 +83,7 @@ export const createUISlice: StateCreator<
 
   setAiAssistantEnabled: (enabled) => set({ aiAssistantEnabled: enabled }),
 
-  updateSettings: (newSettings) =>
-    set((state) => ({
-      settings: { ...state.settings, ...newSettings },
-    })),
+
 
   getTotalBalance: () => {
     const { wallets } = get();
