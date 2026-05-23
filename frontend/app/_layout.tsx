@@ -1,6 +1,5 @@
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useStore } from '@/store/app-store';
-import { initializeNotifications } from '@/utils/push-notifications';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -22,12 +21,6 @@ export default function RootLayout() {
       });
     }
   }, [isHydrated, isInit, initializeApp]);
-
-  useEffect(() => {
-    if (isInit) {
-      void initializeNotifications();
-    }
-  }, [isInit]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

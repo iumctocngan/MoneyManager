@@ -22,6 +22,7 @@ export default function ForgotPasswordScreen() {
 
   const handleSend = () => {
     SoftAlert.alert("Tính năng đang phát triển", "Vui lòng liên hệ quản trị viên để được hỗ trợ.");
+    setSent(true);
   };
 
   return (
