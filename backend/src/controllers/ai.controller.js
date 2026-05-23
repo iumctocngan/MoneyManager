@@ -10,9 +10,8 @@ export const transcribe = async (req, res) => {
     }
 
     const audioFilePath = req.file.path;
-    const mimeType = req.file.mimetype;
 
-    const transactions = await aiService.transcribeTransactions(audioFilePath, mimeType);
+    const transactions = await aiService.transcribeTransactions(audioFilePath, true);
     sendSuccess(res, transactions);
   } catch (error) {
     console.error('Transcription error:', error);

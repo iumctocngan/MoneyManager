@@ -1,4 +1,4 @@
-import { HumanMessage, AIMessage } from '@langchain/core/messages';
+import { HumanMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
 import { ConsoleCallbackHandler } from '@langchain/core/tracers/console';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
@@ -11,7 +11,6 @@ import { listBudgets, createBudget } from './budget.service.js';
 import { createTransaction, listTransactions, updateTransaction, deleteTransaction } from './transaction.service.js';
 import { normalizeTransactionPayload, normalizeBudgetPayload } from '../utils/validators.js';
 import { listWallets } from './wallet.service.js';
-import { getSessionMessages } from './chat.service.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -382,7 +381,7 @@ const updateTransactionTool = tool(
       id: z.union([z.number(), z.string()]).describe('ID của giao dịch cần sửa'),
       type: z.enum(['expense', 'income']).optional(),
       amount: z.number().int().min(1).optional(),
-      categoryId: z.enum(['food', 'transport', 'shopping', 'entertainment', 'health', 'education', 'housing', 'utilities', 'clothing', 'beauty', 'family', 'travel', 'sports', 'pet', 'gift', 'other_expense', 'salary', 'freelance', 'investment', 'bonus', 'rental', 'business', 'interest', 'gift_income']).optional(),
+      categoryId: z.enum([categoryKeys[0], ...categoryKeys.slice(1)]).optional(),
       walletName: z.string().optional(),
       note: z.string().optional(),
       date: z.string().optional(),
@@ -445,7 +444,7 @@ const setBudgetTool = tool(
     name: 'set_budget',
     description: 'Tạo hoặc thiết lập ngân sách cho tháng hiện tại.',
     schema: z.object({
-      categoryId: z.enum(['food', 'transport', 'shopping', 'entertainment', 'health', 'education', 'housing', 'utilities', 'clothing', 'beauty', 'family', 'travel', 'sports', 'pet', 'gift', 'other_expense', 'salary', 'freelance', 'investment', 'bonus', 'rental', 'business', 'interest', 'gift_income']).describe('ID danh mục cần set ngân sách'),
+      categoryId: z.enum([categoryKeys[0], ...categoryKeys.slice(1)]).describe('ID danh mục cần set ngân sách'),
       amount: z.number().int().min(1).describe('Số tiền ngân sách (VND)'),
     }),
   }
@@ -633,29 +632,7 @@ export async function chatWithAI(userId, sessionId, message, extraContext = {}) 
       }
     }
 
-    let messagesToInvoke = [];
-
-    if (!currentState?.values?.messages || currentState.values.messages.length === 0) {
-      console.log(`[AI Agent] Hydrating checkpointer for session ${config.configurable.thread_id}...`);
-      const dbMessages = await getSessionMessages(userId, sessionId);
-      
-      const sanitized = [];
-      let lastRole = null;
-      for (const msg of dbMessages.slice(-15)) {
-        // Bỏ qua tin nhắn AI ở đầu lịch sử vì Gemini yêu cầu tin nhắn đầu tiên phải là User
-        if (sanitized.length === 0 && msg.role !== 'user') continue;
-
-        if (msg.role === lastRole && sanitized.length > 0) {
-          sanitized[sanitized.length - 1].content += '\n' + msg.content;
-        } else {
-          sanitized.push(msg.role === 'user' ? new HumanMessage(msg.content) : new AIMessage(msg.content));
-          lastRole = msg.role;
-        }
-      }
-      messagesToInvoke = sanitized;
-    } else {
-      messagesToInvoke = [new HumanMessage(message)];
-    }
+    const messagesToInvoke = [new HumanMessage(message)];
 
     const result = await agent.invoke(
       {
