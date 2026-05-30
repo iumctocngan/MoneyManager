@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useStore } from '@/store/app-store';
 import { Colors, SoftColors, shadow } from '@/constants/design';
-import { GlowButton, SectionHeading, SoftBackdrop, SoftCard } from '@/components/ui/soft';
+import { SectionHeading, SoftBackdrop, SoftCard } from '@/components/ui/soft';
 import { formatCurrency } from '@/utils';
 
 
@@ -57,7 +57,6 @@ export default function MoreScreen() {
             </View>
             <Text style={styles.userName}>{user?.name || 'Người dùng'}</Text>
             <Text style={styles.userEmail}>{user?.email || 'Chưa có email'}</Text>
-            <GlowButton label="Chỉnh sửa hồ sơ" icon="create-outline" style={styles.editButton} />
           </LinearGradient>
 
           <View style={styles.statsRow}>
@@ -200,12 +199,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.82)',
     marginTop: 6,
     marginBottom: 14,
-  },
-  editButton: {
-    minWidth: 220,
-    backgroundColor: 'rgba(255,255,255,0.24)',
-    shadowOpacity: 0,
-    elevation: 0,
   },
   statsRow: {
     flexDirection: 'row',

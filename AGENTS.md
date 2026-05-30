@@ -6,7 +6,7 @@ The app provides offline-first tracking, budget management, and an intelligent A
 
 - The **Frontend** (`frontend/`) is built with React Native, Expo Router, and Zustand. It uses a local SQLite database for offline-first persistence.
 - The **Backend** (`backend/`) is an Express.js API interacting with a MySQL database. It acts as the central cloud sync and provides AI capabilities.
-- The AI Agent uses LangChain and Gemini 3.1 Flash-Lite to analyze spending, quản lý transactions, and scan receipts.
+- The AI Agent uses LangGraph, LangChain, and Gemini 3.1 Flash-Lite to analyze spending, manage transactions, and provide financial planning advice.
 - All monetary values strictly use `INTEGER` in SQLite to prevent floating-point precision issues with VNĐ.
 
 ## Common commands
@@ -41,8 +41,8 @@ The app provides offline-first tracking, budget management, and an intelligent A
 - All operations that read and then modify related data (e.g., updating a budget or wallet balance) must be wrapped in `withTransaction` to prevent race conditions.
 
 ### AI Agent Integration
-- `backend/src/services/aiAgent.js` orchestrates the AI assistant using `@langchain/google-genai`.
-- The Agent is equipped with custom tools: `get_financial_status` (for current month), `get_trend_report` (for past months), `add_transaction`, and `scan_receipt_image`.
+- `backend/src/services/aiAgent.js` orchestrates the AI assistant using `@langchain/google-genai` and `@langchain/langgraph`.
+- The Agent is equipped with custom tools: `get_financial_status` (for current month), `get_trend_report` (for past months), `add_transaction`, `update_transaction`, `delete_transaction`, `set_budget`, and `transfer_funds`.
 - The backend's `ai.controller.js` forwards a `dataModified` flag back to the frontend whenever the AI triggers a mutation tool, allowing the frontend to refresh its state without relying on fragile text-matching heuristics.
 
 ### UI & Styling
