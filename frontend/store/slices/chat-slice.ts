@@ -96,7 +96,10 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
       isBusy: true,
     }));
 
-    // Create AbortController for this request
+    // Hủy request chat cũ nếu vẫn đang chạy trước khi bắt đầu request mới
+    if (chatAbortController) {
+      chatAbortController.abort();
+    }
     chatAbortController = new AbortController();
 
     try {

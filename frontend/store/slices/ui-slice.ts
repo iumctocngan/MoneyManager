@@ -43,7 +43,7 @@ export const createUISlice: StateCreator<
 
   initializeApp: async () => {
     if (get().isInitialized || get().isBusy) return;
-    set({ isBusy: true, aiAssistantEnabled: true });
+    set({ isBusy: true });
 
     try {
       const token = get().authToken;

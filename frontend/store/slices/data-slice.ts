@@ -360,13 +360,18 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
     },
 
     syncPendingMutations: async () => {
+      // Nếu đang có một tiến trình sync chạy, đợi nó xong rồi kiểm tra lại hàng đợi
+      // (tránh race condition: mutations mới được enqueue trong lúc sync cũ đang chạy sẽ không bị bỏ qua)
       if (syncInFlight) {
         await syncInFlight;
-        return;
+        return get().syncPendingMutations();
       }
 
       syncInFlight = (async () => {
-        const token = requireToken(get());
+        const token = get().authToken;
+
+        // Chưa đăng nhập — giữ mutations trong hàng đợi, sẽ sync lại sau khi đăng nhập
+        if (!token) return;
 
         while (get().pendingMutations.length > 0) {
           const nextMutation = get().pendingMutations[0];

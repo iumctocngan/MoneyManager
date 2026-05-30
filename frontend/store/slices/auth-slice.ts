@@ -1,7 +1,7 @@
 import { StateCreator } from 'zustand';
 import { AppState, AuthStatus } from '../types';
 import { api } from '@/utils/api';
-import { AuthUser } from '@/constants/types';
+import { AuthUser, AuthResponse, AppSnapshot } from '@/constants/types';
 import {
   snapshotFromState,
   isSnapshotEmpty,
@@ -68,8 +68,6 @@ export const createAuthSlice: StateCreator<
     });
   },
 });
-
-import { AuthResponse, AppSnapshot } from '@/constants/types';
 
 async function handleAuthSuccess(
   set: (partial: Partial<AppState>) => void,
