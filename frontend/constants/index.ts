@@ -2,6 +2,10 @@
  * Domain-specific constants and data
  */
 
+/**
+ * Danh sách danh mục chi tiêu tĩnh.
+ * id phải khớp với categoryId trong transactions và categoryIcons trong iconography.ts.
+ */
 export const EXPENSE_CATEGORIES = [
   { id: 'food', name: 'Ăn uống', icon: 'restaurant-outline', color: '#71E59B' },
   { id: 'transport', name: 'Di chuyển', icon: 'car-sport-outline', color: '#F7D95C' },
@@ -21,6 +25,10 @@ export const EXPENSE_CATEGORIES = [
   { id: 'other_expense', name: 'Khác', icon: 'apps-outline', color: '#9AA8B5' },
 ];
 
+/**
+ * Danh sách danh mục thu nhập tĩnh.
+ * id phải khớp với categoryId trong transactions và categoryIcons trong iconography.ts.
+ */
 export const INCOME_CATEGORIES = [
   { id: 'salary', name: 'Lương', icon: 'cash-outline', color: '#4DDE85' },
   { id: 'freelance', name: 'Freelance', icon: 'laptop-outline', color: '#89B5FF' },
@@ -33,6 +41,7 @@ export const INCOME_CATEGORIES = [
   { id: 'other_income', name: 'Khác', icon: 'wallet-outline', color: '#9AA8B5' },
 ];
 
+/** Bảng màu gợi ý khi người dùng tạo ví mới. */
 export const WALLET_COLORS = [
   '#63E18B',
   '#37D6A1',
@@ -45,7 +54,7 @@ export const WALLET_COLORS = [
   '#FFB6C1',
 ];
 
+/** Danh sách icon hỗ trợ cho ví — hiện tại chỉ có một icon mặc định. */
 export const WALLET_ICONS = [
   'wallet-outline',
 ];
-

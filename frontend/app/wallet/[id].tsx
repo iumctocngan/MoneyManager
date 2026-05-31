@@ -24,6 +24,8 @@ export default function WalletDetailScreen() {
 
   const { monthIncome, monthExpense } = useWalletStats(id);
   
+  // Lọc giao dịch thuộc ví này, bao gồm cả giao dịch chuyển tiền đến (toWalletId)
+  // Sắp xếp mới nhất lên đầu
   const walletTransactions = useMemo(
     () =>
       transactions
@@ -32,6 +34,7 @@ export default function WalletDetailScreen() {
     [transactions, id]
   );
 
+  // Guard: ví bị xóa hoặc id không hợp lệ — silent null render (caller sẽ điều hướng)
   if (!wallet) {
     return null;
   }
@@ -48,6 +51,7 @@ export default function WalletDetailScreen() {
     }
   };
 
+  // Xác nhận trước khi xóa ví — cảnh báo rõ rằng toàn bộ giao dịch liên quan cũng mất
   const confirmDelete = () => {
     SoftAlert.alert(
       'Xoá ví',
@@ -141,8 +145,8 @@ export default function WalletDetailScreen() {
                     wallet={sourceWallet}
                     destWallet={destWallet}
                     category={category}
-
                     isLast={index === walletTransactions.length - 1}
+                    // perspectiveWalletId giúp TransactionItem hiển thị đúng hướng tiền (vào/ra) cho giao dịch chuyển
                     perspectiveWalletId={id}
                     onPress={() => router.push(`/transaction/${transaction.id}`)}
                   />

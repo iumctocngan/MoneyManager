@@ -18,20 +18,24 @@ import { SoftColors, shadow } from '@/constants/design';
 import { GlowButton, SoftBackdrop, SoftCard, softInputStyles } from '@/components/ui/soft';
 
 export default function RegisterScreen() {
+  // Chỉ lấy signUp và isBusy từ store để tránh re-render không cần thiết
   const signUp = useStore((state) => state.signUp);
   const isBusy = useStore((state) => state.isBusy);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  // acceptedTerms mặc định true để trải nghiệm đăng ký nhanh hơn
   const [acceptedTerms, setAcceptedTerms] = useState(true);
 
+  // Validate tuần tự: thiếu thông tin → mật khẩu không khớp → chưa đồng ý điều khoản
   const handleSubmit = async () => {
     if (!name.trim() || !email.trim() || !password.trim()) {
       SoftAlert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ thông tin bắt buộc.');
       return;
     }
 
+    // So sánh chính xác (không trim) để phát hiện space thừa trong password
     if (password !== confirmPassword) {
       SoftAlert.alert('Mật khẩu không khớp', 'Vui lòng nhập lại mật khẩu xác nhận.');
       return;
@@ -43,6 +47,7 @@ export default function RegisterScreen() {
     }
 
     try {
+      // trim name/email để tránh khoảng trắng thừa lưu vào DB; password giữ nguyên
       await signUp({
         name: name.trim(),
         email: email.trim(),
@@ -57,10 +62,12 @@ export default function RegisterScreen() {
     <View style={styles.container}>
       <SoftBackdrop />
       <SafeAreaView style={styles.safeArea}>
+        {/* KeyboardAvoidingView: chỉ dùng 'padding' trên iOS; Android tự xử lý */}
         <KeyboardAvoidingView
           style={styles.keyboard}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
+          {/* keyboardShouldPersistTaps="handled": cho phép submit form khi bàn phím đang mở */}
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.content}
@@ -105,6 +112,7 @@ export default function RegisterScreen() {
                 secureTextEntry
               />
 
+              {/* Checkbox điều khoản — toggle bằng functional update để tránh closure stale state */}
               <TouchableOpacity
                 style={styles.checkboxRow}
                 activeOpacity={0.82}
@@ -116,6 +124,7 @@ export default function RegisterScreen() {
                 <Text style={styles.checkboxText}>Tôi đồng ý điều khoản dịch vụ</Text>
               </TouchableOpacity>
 
+              {/* isBusy: vô hiệu hóa nút và đổi nhãn khi đang gọi API để tránh double-submit */}
               <GlowButton
                 label={isBusy ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
                 onPress={() => void handleSubmit()}
@@ -136,6 +145,10 @@ export default function RegisterScreen() {
   );
 }
 
+/**
+ * Input có icon bên trái — dùng rest props spread để truyền toàn bộ TextInput props
+ * mà không cần khai báo lại từng prop (placeholder, secureTextEntry, v.v.).
+ */
 function AuthInput({
   icon,
   ...props

@@ -36,10 +36,12 @@ export default function AddTransactionScreen() {
 
   const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 
+  // Loại bỏ ký tự không phải số — chập nhận số nguyên VNĐ, không có thập phân
   const handleAmountChange = (text: string) => {
     setAmount(text.replace(/[^0-9]/g, ''));
   };
 
+  // Validate theo thứ tự: số tiền → danh mục → ví trước khi gọi API
   const handleSave = async () => {
     if (!amount || parseInt(amount, 10) === 0) {
       SoftAlert.alert('Thiếu số tiền', 'Vui lòng nhập số tiền giao dịch.');
@@ -101,6 +103,7 @@ export default function AddTransactionScreen() {
                   style={[styles.typeButton, type === item.key && styles.typeButtonActive]}
                   onPress={() => {
                     setType(item.key as TransactionType);
+                    // Reset danh mục khi đổi loại — danh mục chi và thu khác nhau hoàn toàn
                     setSelectedCategory('');
                   }}
                 >
@@ -157,12 +160,14 @@ export default function AddTransactionScreen() {
               </TouchableOpacity>
             </SoftCard>
             
+            {/* DateTimePicker chỉ render khi showDatePicker=true, mở native calendar picker */}
             {showDatePicker && (
               <DateTimePicker
                 value={date}
                 mode="date"
                 display="default"
                 onChange={(event, selectedDate) => {
+                  // Luôn ẩn picker sau khi chọn (cả khi cancel trên Android)
                   setShowDatePicker(false);
                   if (selectedDate) setDate(selectedDate);
                 }}
@@ -216,6 +221,7 @@ export default function AddTransactionScreen() {
         </KeyboardAvoidingView>
       </SafeAreaView>
 
+      {/* FAB phụ — lối tắt nhanh sang nhập bằng giọng nói hoặc quét hóa đơn */}
       <View style={styles.floatingActionGroup}>
         <TouchableOpacity 
           style={styles.fabActionButton} 

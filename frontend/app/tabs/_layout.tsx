@@ -6,6 +6,10 @@ import { useStore } from '@/store/app-store';
 import { Colors, SoftColors, shadow } from '@/constants/design';
 import { LinearGradient } from 'expo-linear-gradient';
 
+/**
+ * Nút "+" trung tâm của tab bar — thay thế hoàn toàn tab item mặc định bằng `tabBarButton`.
+ * Điều hướng thẳng tới `/transaction/add` thay vì render màn hình tab (xem add-button.tsx).
+ */
 function TabBarButton({ onPress }: { onPress: () => void }) {
   return (
     <View style={styles.addButtonWrap}>
@@ -16,11 +20,14 @@ function TabBarButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+/** Layout cho các màn hình tab chính — bao gồm tab bar tuỳ chỉnh và nút FAB AI. */
 export default function TabsLayout() {
+  // useSafeAreaInsets để tab bar không bị che bởi home indicator trên iOS
   const insets = useSafeAreaInsets();
   const authToken = useStore((state) => state.authToken);
   const { aiAssistantEnabled, setAiAssistantEnabled } = useStore();
 
+  // Guard: nếu token bị xoá (logout), redirect về login ngay lập tức
   if (!authToken) {
     return <Redirect href={'/auth/login' as any} />;
   }
@@ -35,6 +42,7 @@ export default function TabsLayout() {
           left: 0,
           right: 0,
           bottom: 0,
+          // Chiều cao tab bar = nội dung (72px) + safe area bottom để tránh home indicator
           height: 72 + insets.bottom,
           paddingBottom: Math.max(insets.bottom, 10),
           paddingTop: 10,
@@ -70,6 +78,7 @@ export default function TabsLayout() {
           ),
         }}
       />
+      {/* Tab giữa không có màn hình thực — tabBarButton override toàn bộ để render FAB tròn */}
       <Tabs.Screen
         name="add-button"
         options={{
@@ -97,6 +106,8 @@ export default function TabsLayout() {
       />
     </Tabs>
 
+    {/* FAB AI: chỉ hiện khi người dùng bật tính năng AI assistant.
+        Vị trí `bottom: 85 + insets.bottom` để nổi trên tab bar mà không bị che. */}
     {aiAssistantEnabled && (
       <View style={[styles.floatingContainer, { bottom: 85 + insets.bottom }]}>
         <TouchableOpacity 
@@ -108,6 +119,7 @@ export default function TabsLayout() {
             <Ionicons name="sparkles" size={24} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
+        {/* Nút X nhỏ góc trên để người dùng tắt FAB mà không cần vào Settings */}
         <TouchableOpacity 
           style={styles.closeFloating}
           onPress={() => setAiAssistantEnabled(false)}
@@ -163,6 +175,7 @@ const styles = StyleSheet.create({
     height: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    // zIndex cao hơn floatingContainer để nút X không bị nút gradient che khuất
     zIndex: 10000,
     ...shadow.soft,
   },

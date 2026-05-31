@@ -42,6 +42,7 @@ export default function AIChatScreen() {
   const [showHistory, setShowHistory] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
+  // Tải danh sách session khi vào màn hình
   useEffect(() => {
     listSessions();
   }, [listSessions]);
@@ -49,11 +50,14 @@ export default function AIChatScreen() {
   const handleSend = async () => {
     if (!inputText.trim()) return;
     const msg = inputText.trim();
+    // Xóa input ngay để UX mượt hơn, không chờ AI phản hồi
     setInputText('');
     await sendChatMessage(msg);
   };
 
 
+  // Tự cuộn xuống cuối mỗi khi danh sách tin nhắn thay đổi
+  // Dùng setTimeout 100ms để chờ FlatList render xong rồi mới scroll
   useEffect(() => {
     if (chatMessages.length > 0) {
       setTimeout(() => {
@@ -62,11 +66,13 @@ export default function AIChatScreen() {
     }
   }, [chatMessages]);
 
+  // Chọn một session từ lịch sử và tải lại tin nhắn của session đó
   const selectSession = async (sessionId: string) => {
     await loadSessionMessages(sessionId);
     setShowHistory(false);
   };
 
+  // Nút gửi kiêm nút dừng: nếu AI đang xử lý thì dừng, ngược lại thì gửi tin
   const handlePressSend = () => {
     if (isBusy) {
       stopChat();
@@ -75,6 +81,7 @@ export default function AIChatScreen() {
     }
   };
 
+  // Xác nhận trước khi xóa session — tránh người dùng xóa nhầm
   const handleDeleteSession = (sessionId: string) => {
     SoftAlert.alert(
       'Xóa cuộc trò chuyện',
@@ -90,6 +97,7 @@ export default function AIChatScreen() {
     );
   };
 
+  // Render từng bong bóng tin nhắn — phân biệt bằng role 'user' hay 'assistant'
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isUser = item.role === 'user';
     return (
@@ -133,6 +141,7 @@ export default function AIChatScreen() {
             <TouchableOpacity onPress={createNewSession} style={styles.headerIcon}>
               <Ionicons name="add-circle-outline" size={24} color={Colors.primary} />
             </TouchableOpacity>
+            {/* Nút xóa session hiện tại — bị disable khi chưa có session nào */}
             <TouchableOpacity 
               onPress={() => currentSessionId && handleDeleteSession(currentSessionId)} 
               style={[styles.headerIcon, !currentSessionId && { opacity: 0.3 }]}
@@ -173,6 +182,7 @@ export default function AIChatScreen() {
               />
             </View>
 
+            {/* Đổi màu đỏ + icon stop khi AI đang xử lý để user có thể hủy */}
             <TouchableOpacity
               style={[
                 styles.sendButton, 

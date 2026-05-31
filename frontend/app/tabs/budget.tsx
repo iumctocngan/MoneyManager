@@ -16,12 +16,14 @@ export default function BudgetScreen() {
   const { budgets, transactions, getCategoryById } = useStore();
   const { deleteBudget } = useMutations();
 
+  // Tính toán tiến độ chi tiêu cho từng ngân sách — memo để tránh recompute khi re-render không liên quan
   const budgetsWithProgress = useMemo(
     () =>
       budgets.map((budget) => {
         const start = new Date(budget.startDate);
         const end = new Date(budget.endDate);
 
+        // Chỉ tính các giao dịch CHI trong danh mục và khoảng thời gian của ngân sách
         const matchingTransactions = transactions.filter(
           (transaction) =>
             transaction.categoryId === budget.categoryId &&
@@ -32,14 +34,17 @@ export default function BudgetScreen() {
 
         const spent = matchingTransactions.reduce((sum, tx) => sum + tx.amount, 0);
         const remaining = budget.amount - spent;
+        // pct = 0 khi budget.amount = 0 để tránh chia cho 0
         const pct = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
 
         // Tính toán số ngày còn lại của chu kỳ ngân sách
         const now = new Date();
+        // Cắt giờ/phút/giây để so sánh ngày chính xác, tránh lệch múi giờ
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
         const diffTime = endDateOnly.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        // daysLeft = -1 khi ngân sách đã hết hạn — dùng để hiển thị trạng thái "Đã kết thúc"
         const daysLeft = diffDays < 0 ? -1 : diffDays;
 
         return {
@@ -53,10 +58,13 @@ export default function BudgetScreen() {
     [budgets, transactions]
   );
 
+  // Tổng hợp toàn bộ ngân sách để hiển thị trên thẻ summary
   const totalBudget = budgetsWithProgress.reduce((sum, b) => sum + b.amount, 0);
   const totalSpent = budgetsWithProgress.reduce((sum, b) => sum + b.spent, 0);
+  // Clamp tối đa 100% để thanh tổng không tràn ra ngoài track
   const totalProgress = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
 
+  // Thực hiện xóa sau khi người dùng xác nhận — lỗi hiển thị qua SoftAlert
   const handleDelete = async (id: string) => {
     try {
       await deleteBudget(id);
@@ -68,6 +76,7 @@ export default function BudgetScreen() {
     }
   };
 
+  // Hiện dialog xác nhận trước khi xóa để tránh thao tác nhầm
   const confirmDelete = (id: string) => {
     SoftAlert.alert('Xoá ngân sách', 'Bạn có chắc muốn xoá ngân sách này?', [
       { text: 'Huỷ', style: 'cancel' },
@@ -93,6 +102,7 @@ export default function BudgetScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          {/* Thẻ tổng chỉ hiện khi có ít nhất 1 ngân sách */}
           {budgets.length > 0 ? (
             <SoftCard style={styles.summaryCard}>
               <Text style={styles.summaryLabel}>Ngân sách tháng này</Text>
@@ -106,6 +116,7 @@ export default function BudgetScreen() {
                 </View>
                 <View>
                   <Text style={styles.summaryMetaLabel}>Còn lại</Text>
+                  {/* Màu xanh khi còn dư, đỏ khi vượt ngân sách */}
                   <Text style={[styles.summaryMetaValue, { color: totalBudget - totalSpent >= 0 ? Colors.income : Colors.expense }]}>
                     {formatCurrency(totalBudget - totalSpent)}
                   </Text>
@@ -117,6 +128,7 @@ export default function BudgetScreen() {
                     styles.progressFill,
                     {
                       width: `${totalProgress}%`,
+                      // Đổi màu đỏ khi vượt 100% để cảnh báo trực quan
                       backgroundColor: totalProgress > 100 ? Colors.expense : SoftColors.primary,
                     },
                   ]}
@@ -140,6 +152,7 @@ export default function BudgetScreen() {
             budgetsWithProgress.map((budget) => {
               const category = getCategoryById(budget.categoryId);
               const isOverBudget = budget.spent > budget.amount;
+              // Màu thanh tiến độ: đỏ khi vượt, vàng khi > 80%, xanh khi an toàn
               const barColor = isOverBudget
                 ? Colors.expense
                 : budget.pct > 80
@@ -157,6 +170,7 @@ export default function BudgetScreen() {
                       <View>
                         <Text style={styles.categoryName}>{category?.name || 'Khác'}</Text>
                         <Text style={styles.categorySpent}>Đã chi: {formatCurrency(budget.spent)}</Text>
+                        {/* Hiển thị cảnh báo màu vàng khi còn ≤ 3 ngày */}
                         <Text
                           style={[
                             styles.daysLeftText,
@@ -179,6 +193,7 @@ export default function BudgetScreen() {
                     </View>
                     <View style={styles.cardHeaderRight}>
                       <Text style={styles.categoryBudget}>{formatCurrency(budget.amount)}</Text>
+                      {/* Hiển thị số tiền vượt hoặc còn lại tùy trạng thái */}
                       <Text
                         style={[
                           styles.categoryRemaining,
@@ -192,6 +207,7 @@ export default function BudgetScreen() {
                     </View>
                   </View>
 
+                  {/* Thanh tiến độ: clamp tối đa 100% width để không tràn track */}
                   <View style={styles.budgetTrack}>
                     <View
                       style={[
@@ -202,6 +218,7 @@ export default function BudgetScreen() {
                         },
                       ]}
                     >
+                      {/* Hiển thị ">100%" khi vượt để phân biệt với trường hợp đúng 100% */}
                       <Text style={styles.budgetFillText}>
                         {budget.pct > 100 ? '>100%' : `${Math.round(budget.pct)}%`}
                       </Text>
@@ -233,6 +250,7 @@ export default function BudgetScreen() {
               );
             })
           )}
+          {/* Padding cuối để nội dung không bị tab bar che */}
           <View style={{ height: 120 }} />
         </ScrollView>
       </SafeAreaView>

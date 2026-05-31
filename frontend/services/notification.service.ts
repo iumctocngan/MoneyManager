@@ -2,8 +2,13 @@ import { AppNotification, Budget, Category, Transaction } from '@/constants/type
 import { getBudgetAlerts } from '@/services/budget-alerts.service';
 import { formatCurrency } from '@/utils';
 
+// Hàm tra cứu danh mục theo id — được inject từ store để tránh phụ thuộc trực tiếp vào Zustand
 type CategoryResolver = (id: string) => Category | undefined;
 
+/**
+ * Tổng hợp toàn bộ thông báo trong app dựa trên trạng thái ngân sách và lịch sử giao dịch.
+ * Không gửi push notification — chỉ tạo danh sách để hiển thị trong UI.
+ */
 export function generateNotifications(
   budgets: Budget[],
   transactions: Transaction[],
@@ -14,15 +19,18 @@ export function generateNotifications(
 
   for (const alert of getBudgetAlerts(budgets, transactions, now)) {
     const budget = budgets.find((item) => item.id === alert.budgetId);
+    // Bỏ qua nếu budget đã bị xóa khỏi store sau khi alert được tạo
     if (!budget) {
       continue;
     }
 
     const category = getCategoryById(alert.categoryId);
+    // Fallback về 'Danh mục' nếu danh mục không tìm thấy (category bị xóa)
     const categoryName = category?.name || 'Danh mục';
 
     if (alert.type === 'budget_exceeded') {
       notifications.push({
+        // id dùng prefix để tránh trùng khi có nhiều loại alert cho cùng budgetId
         id: `exceeded-${alert.budgetId}`,
         type: alert.type,
         title: 'Vượt ngân sách!',
@@ -49,6 +57,7 @@ export function generateNotifications(
       continue;
     }
 
+    // Trường hợp còn lại là saving_good
     notifications.push({
       id: `saving-${alert.budgetId}`,
       type: alert.type,
@@ -61,7 +70,9 @@ export function generateNotifications(
     });
   }
 
+  // Kiểm tra tần suất ghi chép — nhắc người dùng nếu quá 7 ngày không có giao dịch mới
   if (transactions.length > 0) {
+    // Spread để tránh mutate mảng gốc khi sort
     const sorted = [...transactions].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
@@ -72,6 +83,7 @@ export function generateNotifications(
 
     if (daysSince >= 7) {
       notifications.push({
+        // Nhúng daysSince vào id để tránh cache notification cũ khi số ngày thay đổi
         id: `no-activity-${daysSince}`,
         type: 'no_activity',
         title: 'Nhắc ghi chép',
@@ -82,6 +94,7 @@ export function generateNotifications(
       });
     }
   } else {
+    // Người dùng mới — chưa có giao dịch nào, hướng dẫn bắt đầu
     notifications.push({
       id: 'no-activity-first',
       type: 'no_activity',
@@ -93,6 +106,7 @@ export function generateNotifications(
     });
   }
 
+  // Sắp xếp theo mức độ nghiêm trọng: exceeded > warning > saving_good > no_activity
   const priority: Record<string, number> = {
     budget_exceeded: 0,
     budget_warning: 1,
@@ -101,6 +115,7 @@ export function generateNotifications(
   };
 
   notifications.sort(
+    // Type không có trong map sẽ nhận priority 99 — đẩy xuống cuối danh sách
     (a, b) => (priority[a.type] ?? 99) - (priority[b.type] ?? 99)
   );
 

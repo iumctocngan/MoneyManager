@@ -1,13 +1,19 @@
 import { HttpError } from './http-error.js';
 
+// Dùng Object.prototype.hasOwnProperty.call để tránh lỗi với object không có prototype (Object.create(null))
 const hasOwn = (payload, key) => Object.prototype.hasOwnProperty.call(payload, key);
 
+// Đảm bảo payload là object thuần — từ chối null, array, string trước khi parse các field
 function ensureObject(payload, label = 'Request body') {
   if (!payload || Array.isArray(payload) || typeof payload !== 'object') {
     throw new HttpError(400, `${label} must be a JSON object.`);
   }
 }
 
+/**
+ * Parse và validate giá trị string từ request body.
+ * Tự động trim whitespace; hỗ trợ required/optional, allowEmpty, maxLength.
+ */
 function parseString(value, field, options = {}) {
   const { required = true, allowEmpty = false, maxLength } = options;
 
@@ -15,6 +21,7 @@ function parseString(value, field, options = {}) {
     if (required) {
       throw new HttpError(400, `${field} is required.`);
     }
+    // undefined = field không có trong payload → cho phép partial update bỏ qua field này
     return undefined;
   }
 
@@ -35,6 +42,10 @@ function parseString(value, field, options = {}) {
   return normalized;
 }
 
+/**
+ * Parse email — tái dụng parseString rồi kiểm tra thêm format email cơ bản.
+ * Luôn lowercase để tránh duplicate do khác hoa thường.
+ */
 function parseEmail(value, field, options = {}) {
   const normalized = parseString(value, field, options)?.toLowerCase();
 
@@ -42,6 +53,7 @@ function parseEmail(value, field, options = {}) {
     return undefined;
   }
 
+  // Pattern đơn giản — đủ để lọc lỗi nhập liệu; không cần validate RFC 5322 đầy đủ
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!emailPattern.test(normalized)) {
@@ -51,6 +63,9 @@ function parseEmail(value, field, options = {}) {
   return normalized;
 }
 
+/**
+ * Parse mật khẩu với kiểm tra độ dài tối thiểu (mặc định 8) và tối đa (mặc định 128).
+ */
 function parsePassword(value, field, options = {}) {
   const { required = true, minLength = 8, maxLength = 128 } = options;
   const normalized = parseString(value, field, {
@@ -70,6 +85,10 @@ function parsePassword(value, field, options = {}) {
   return normalized;
 }
 
+/**
+ * Parse số — từ chối NaN, Infinity, và kiểu dữ liệu không phải number.
+ * Tùy chọn: bắt buộc integer (cho tiền VNĐ), giá trị tối thiểu.
+ */
 function parseNumber(value, field, options = {}) {
   const { required = true, min, integer = false } = options;
 
@@ -84,6 +103,7 @@ function parseNumber(value, field, options = {}) {
     throw new HttpError(400, `${field} must be a valid number.`);
   }
 
+  // integer: true bắt buộc giá trị phải là số nguyên — dùng cho amount (VNĐ không có số thập phân)
   if (integer && !Number.isInteger(value)) {
     throw new HttpError(400, `${field} must be an integer.`);
   }
@@ -95,6 +115,9 @@ function parseNumber(value, field, options = {}) {
   return value;
 }
 
+/**
+ * Parse boolean — từ chối mọi giá trị không phải true/false thuần túy.
+ */
 function parseBoolean(value, field, options = {}) {
   const { required = true } = options;
 
@@ -112,6 +135,9 @@ function parseBoolean(value, field, options = {}) {
   return value;
 }
 
+/**
+ * Parse giá trị enum — đảm bảo value nằm trong tập giá trị cho phép.
+ */
 function parseEnum(value, field, allowedValues, options = {}) {
   const { required = true } = options;
 
@@ -129,6 +155,10 @@ function parseEnum(value, field, allowedValues, options = {}) {
   return value;
 }
 
+/**
+ * Parse chuỗi ngày — chấp nhận mọi định dạng Date.parse() hiểu được,
+ * chuẩn hóa output về ISO 8601 để lưu nhất quán.
+ */
 function parseDateString(value, field, options = {}) {
   const { required = true } = options;
 
@@ -148,6 +178,12 @@ function parseDateString(value, field, options = {}) {
   return parsed.toISOString();
 }
 
+/**
+ * Parse string có thể null — phân biệt 3 trường hợp:
+ *   undefined → field vắng mặt (partial update bỏ qua)
+ *   null → xóa giá trị (vd: xóa walletId khỏi budget)
+ *   string → validate bình thường
+ */
 function parseNullableString(value, field, options = {}) {
   const { maxLength } = options;
 
@@ -166,12 +202,17 @@ function parseNullableString(value, field, options = {}) {
   });
 }
 
+// Loại bỏ các key có giá trị undefined để không ghi đè field khi partial update
 function stripUndefined(payload) {
   return Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined)
   );
 }
 
+/**
+ * Validate và chuẩn hóa payload tạo/cập nhật wallet.
+ * partial: true → chỉ validate các field có mặt trong payload (dùng cho PATCH).
+ */
 export function normalizeWalletPayload(payload, { partial = false } = {}) {
   ensureObject(payload);
 
@@ -186,6 +227,7 @@ export function normalizeWalletPayload(payload, { partial = false } = {}) {
   }
 
   if (!partial || hasOwn(payload, 'balance')) {
+    // integer: true vì tiền VNĐ lưu dạng INTEGER, không có số thập phân
     result.balance = parseNumber(payload.balance, 'balance', { required: !partial, integer: true });
   }
 
@@ -205,6 +247,7 @@ export function normalizeWalletPayload(payload, { partial = false } = {}) {
     });
   }
 
+  // createdAt chỉ xử lý khi client gửi — dùng cho sync offline (client giữ timestamp gốc)
   if (hasOwn(payload, 'createdAt')) {
     result.createdAt = parseDateString(payload.createdAt, 'createdAt', { required: false });
   }
@@ -212,6 +255,10 @@ export function normalizeWalletPayload(payload, { partial = false } = {}) {
   return stripUndefined(result);
 }
 
+/**
+ * Validate và chuẩn hóa payload tạo/cập nhật transaction.
+ * Có thêm cross-field validation: transfer bắt buộc toWalletId, và walletId ≠ toWalletId.
+ */
 export function normalizeTransactionPayload(payload, { partial = false } = {}) {
   ensureObject(payload);
 
@@ -228,6 +275,7 @@ export function normalizeTransactionPayload(payload, { partial = false } = {}) {
   }
 
   if (!partial || hasOwn(payload, 'amount')) {
+    // min: 0 — không cho phép số âm; integer: true cho VNĐ
     result.amount = parseNumber(payload.amount, 'amount', { required: !partial, min: 0, integer: true });
   }
 
@@ -245,6 +293,7 @@ export function normalizeTransactionPayload(payload, { partial = false } = {}) {
     });
   }
 
+  // toWalletId chỉ xử lý khi có mặt — nullable vì chỉ transfer mới cần
   if (hasOwn(payload, 'toWalletId')) {
     result.toWalletId = parseNullableString(payload.toWalletId, 'toWalletId', { maxLength: 64 });
   }
@@ -253,6 +302,7 @@ export function normalizeTransactionPayload(payload, { partial = false } = {}) {
     result.note = payload.note === undefined
       ? partial
         ? undefined
+        // Khi tạo mới (không partial), note mặc định là chuỗi rỗng nếu không truyền
         : ''
       : parseString(payload.note, 'note', {
           required: false,
@@ -274,6 +324,7 @@ export function normalizeTransactionPayload(payload, { partial = false } = {}) {
   const walletId = normalized.walletId;
   const toWalletId = normalized.toWalletId;
 
+  // Cross-field validation: transfer phải có toWalletId và không được trùng với walletId nguồn
   if (type === 'transfer') {
     if (!toWalletId) {
       throw new HttpError(400, 'toWalletId is required when type is transfer.');
@@ -287,6 +338,10 @@ export function normalizeTransactionPayload(payload, { partial = false } = {}) {
   return normalized;
 }
 
+/**
+ * Validate và chuẩn hóa payload tạo/cập nhật budget.
+ * Có cross-field validation: startDate phải trước hoặc bằng endDate.
+ */
 export function normalizeBudgetPayload(payload, { partial = false } = {}) {
   ensureObject(payload);
 
@@ -323,12 +378,14 @@ export function normalizeBudgetPayload(payload, { partial = false } = {}) {
     result.endDate = parseDateString(payload.endDate, 'endDate', { required: !partial });
   }
 
+  // walletId nullable — null nghĩa là budget áp dụng cho tất cả ví
   if (hasOwn(payload, 'walletId')) {
     result.walletId = parseNullableString(payload.walletId, 'walletId', { maxLength: 64 });
   }
 
   const normalized = stripUndefined(result);
 
+  // Chỉ kiểm tra thứ tự ngày khi cả hai field đều có mặt trong payload
   if (normalized.startDate && normalized.endDate) {
     const start = new Date(normalized.startDate);
     const end = new Date(normalized.endDate);
@@ -343,6 +400,10 @@ export function normalizeBudgetPayload(payload, { partial = false } = {}) {
 
 
 
+/**
+ * Validate payload sync toàn bộ state từ client lên server (offline-first sync).
+ * Kiểm tra tất cả 3 mảng bắt buộc, rồi validate từng item qua các normalizer tương ứng.
+ */
 export function normalizeStateSnapshot(payload) {
   ensureObject(payload, 'Request body');
 
@@ -367,18 +428,25 @@ export function normalizeStateSnapshot(payload) {
   };
 }
 
+/**
+ * Validate payload đăng ký tài khoản — email, password bắt buộc; name tùy chọn.
+ */
 export function normalizeRegisterPayload(payload) {
   ensureObject(payload);
 
   return {
     email: parseEmail(payload.email, 'email', { maxLength: 191 }),
     password: parsePassword(payload.password, 'password'),
+    // name không bắt buộc — chỉ parse nếu client gửi lên
     name: hasOwn(payload, 'name')
       ? parseString(payload.name, 'name', { required: false, allowEmpty: false, maxLength: 100 })
       : undefined,
   };
 }
 
+/**
+ * Validate payload đăng nhập — chỉ cần email và password.
+ */
 export function normalizeLoginPayload(payload) {
   ensureObject(payload);
 

@@ -12,6 +12,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SoftColors, shadow } from '@/constants/design';
 
+/**
+ * Nền gradient toàn màn hình với các vòng sáng (glow) trang trí.
+ * Dùng `StyleSheet.absoluteFill` để phủ kín container mà không ảnh hưởng layout.
+ * `pointerEvents="none"` đảm bảo các glow blob không chặn sự kiện chạm.
+ */
 export function SoftBackdrop() {
   return (
     <>
@@ -28,6 +33,10 @@ export function SoftBackdrop() {
   );
 }
 
+/**
+ * Card container với bo góc, viền mềm và đổ bóng nhẹ — đơn vị UI cơ bản của design system.
+ * Nhận `style` để override hoặc bổ sung style từ nơi dùng.
+ */
 export function SoftCard({
   children,
   style,
@@ -38,6 +47,11 @@ export function SoftCard({
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
+/**
+ * Tiêu đề section kèm nút hành động tuỳ chọn (ví dụ "Xem tất cả").
+ * Regex trong `displayTitle` chuẩn hoá chuỗi ngày dạng "T1 tháng 1 năm 2024"
+ * thành "1 tháng 1 năm 2024" — loại bỏ tiền tố "T" thừa từ `toLocaleDateString`.
+ */
 export function SectionHeading({
   title,
   actionLabel,
@@ -64,6 +78,11 @@ export function SectionHeading({
   );
 }
 
+/**
+ * Nút CTA chính với màu nền primary và glow shadow.
+ * Hỗ trợ icon Ionicons tuỳ chọn bên trái label.
+ * Khi `disabled`, giảm opacity thay vì ẩn — giữ layout ổn định.
+ */
 export function GlowButton({
   label,
   onPress,
@@ -92,6 +111,10 @@ export function GlowButton({
   );
 }
 
+/**
+ * Badge icon hình tròn với nền bán trong suốt theo màu `tint`.
+ * Hậu tố `22` (hex) tương đương ~13% opacity — đủ nhìn thấy màu nhưng không lấn át icon.
+ */
 export function SoftBadge({
   icon,
   tint,
@@ -110,6 +133,10 @@ export function SoftBadge({
   );
 }
 
+/**
+ * Style dùng chung cho các ô nhập liệu (TextInput) theo design system.
+ * Export ra ngoài để các màn hình form có thể tái sử dụng mà không copy style.
+ */
 export const softInputStyles = StyleSheet.create({
   inputShell: {
     flexDirection: 'row',
@@ -139,6 +166,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     opacity: 0.55,
   },
+  // Glow góc trên phải — màu xanh lá nhạt
   glowTop: {
     width: 240,
     height: 240,
@@ -146,6 +174,7 @@ const styles = StyleSheet.create({
     top: -40,
     right: -40,
   },
+  // Glow góc dưới trái — màu xanh dương nhạt
   glowBottom: {
     width: 280,
     height: 280,
@@ -153,6 +182,7 @@ const styles = StyleSheet.create({
     bottom: -120,
     left: -70,
   },
+  // Glow giữa bên trái — tạo chiều sâu cho nền
   glowSide: {
     width: 180,
     height: 180,

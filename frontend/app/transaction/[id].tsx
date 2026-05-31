@@ -19,6 +19,7 @@ export default function TransactionDetailScreen() {
 
   const transaction = transactions.find((item) => item.id === id);
 
+  // Guard: giao dịch có thể đã bị xóa trước khi màn hình này được mở
   if (!transaction) {
     return (
       <View style={styles.root}>
@@ -36,6 +37,7 @@ export default function TransactionDetailScreen() {
 
   const category = getCategoryById(transaction.categoryId);
   const wallet = wallets.find((item) => item.id === transaction.walletId);
+  // Màu gradient hero card phụ thuộc vào loại giao dịch (thu vs chi)
   const typeColor = transaction.type === 'income' ? Colors.income : Colors.expense;
 
   const handleDelete = async () => {
@@ -50,6 +52,7 @@ export default function TransactionDetailScreen() {
     }
   };
 
+  // Xác nhận qua SoftAlert trước khi xóa — tránh người dùng xóa nhầm giao dịch
   const confirmDelete = () => {
     SoftAlert.alert('Xoá giao dịch', 'Bạn có chắc muốn xoá giao dịch này không?', [
       { text: 'Huỷ', style: 'cancel' },
@@ -114,6 +117,10 @@ export default function TransactionDetailScreen() {
   );
 }
 
+/**
+ * Component dòng thông tin — dùng lại cho ngày, ví, ghi chú, thời gian tạo
+ * prop `last` ẩn đường kẻ dưới để thiết kế sạch hơn ở hàng cuối
+ */
 function DetailRow({
   icon,
   label,

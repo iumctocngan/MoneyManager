@@ -19,11 +19,13 @@ import { Colors , SoftColors, shadow } from '@/constants/design';
 import { GlowButton, SoftBackdrop, SoftCard, softInputStyles } from '@/components/ui/soft';
 
 export default function LoginScreen() {
+  // Chỉ lấy signIn và isBusy từ store để tránh re-render không cần thiết khi state khác thay đổi
   const signIn = useStore((state) => state.signIn);
   const isBusy = useStore((state) => state.isBusy);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // Validate phía client trước khi gọi API — giảm round-trip không cần thiết
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
       SoftAlert.alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
@@ -31,6 +33,7 @@ export default function LoginScreen() {
     }
 
     try {
+      // signIn xử lý lưu token và hydrate store; sau khi thành công Expo Router tự redirect
       await signIn(email.trim(), password);
     } catch (error) {
       SoftAlert.alert('Đăng nhập thất bại', error instanceof Error ? error.message : 'Đã có lỗi xảy ra.');
@@ -41,10 +44,12 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <SoftBackdrop />
       <SafeAreaView style={styles.safeArea}>
+        {/* KeyboardAvoidingView: chỉ dùng 'padding' trên iOS; Android tự xử lý qua windowSoftInputMode */}
         <KeyboardAvoidingView
           style={styles.keyboard}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
+          {/* keyboardShouldPersistTaps="handled": cho phép nhấn nút khi bàn phím đang mở */}
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.content}
@@ -82,6 +87,7 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </Link>
 
+              {/* isBusy: vô hiệu hóa nút và đổi nhãn để tránh double-submit */}
               <GlowButton
                 label={isBusy ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 onPress={() => void handleSubmit()}
@@ -96,6 +102,7 @@ export default function LoginScreen() {
               </Link>
             </SoftCard>
 
+            {/* Đăng nhập mạng xã hội — hiện chỉ là placeholder, chưa tích hợp OAuth */}
             <View style={styles.socialWrap}>
               <Text style={styles.socialLabel}>Hoặc đăng nhập bằng</Text>
               <View style={styles.socialRow}>
@@ -122,6 +129,10 @@ export default function LoginScreen() {
   );
 }
 
+/**
+ * Input có icon bên trái — dùng rest props spread để truyền toàn bộ TextInput props
+ * mà không cần khai báo lại từng prop (placeholder, secureTextEntry, v.v.).
+ */
 function AuthInput({
   icon,
   ...props

@@ -26,17 +26,23 @@ import { TransactionItem } from '@/components/TransactionItem';
 export default function TransactionsScreen() {
   const { wallets, getCategoryById } = useStore();
   const { deleteTransaction } = useMutations();
+  // Lọc theo loại giao dịch: tất cả / thu / chi
   const [selectedType, setSelectedType] = useState<'all' | 'income' | 'expense'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  // showSearch: toggle hiện/ẩn thanh tìm kiếm để tiết kiệm không gian màn hình
   const [showSearch, setShowSearch] = useState(false);
 
+  // viewYear/viewMonth: tháng đang xem — mặc định là tháng hiện tại
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
+  // selectedDay: ngày được chọn trên thanh chip — null nghĩa là chưa chọn (sẽ dùng dayOptions[0])
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
+  // Lấy giao dịch đã được lọc và tổng hợp theo tháng/năm đang xem
   const { filtered: monthTransactions } = useMonthTransactions(viewYear, viewMonth);
 
+  // Tạo tối đa 7 ngày có giao dịch để hiển thị chip — giới hạn 7 tránh scroll quá dài
   const dayOptions = useMemo(() => {
     const uniqueDays = [...new Set(monthTransactions.map((transaction: Transaction) => new Date(transaction.date).getDate()))]
       .sort((a: number, b: number) => a - b)
@@ -46,11 +52,14 @@ export default function TransactionsScreen() {
       return uniqueDays;
     }
 
+    // Fallback: không có giao dịch nào → hiển thị chip ngày hiện tại (hoặc ngày cuối tháng nếu vượt)
     return [Math.min(new Date().getDate(), new Date(viewYear, viewMonth + 1, 0).getDate())];
   }, [monthTransactions, viewYear, viewMonth]);
 
+  // Nếu selectedDay không tồn tại trong dayOptions (vd: chuyển tháng), tự động chọn chip đầu tiên
   const activeDay = selectedDay && dayOptions.includes(selectedDay) ? selectedDay : dayOptions[0] ?? null;
 
+  // Lọc giao dịch theo loại, ngày chip đang chọn, và từ khóa tìm kiếm
   const filteredTransactions = useMemo(
     () =>
       monthTransactions.filter((transaction: Transaction) => {
@@ -58,10 +67,12 @@ export default function TransactionsScreen() {
         const wallet = wallets.find((item) => item.id === transaction.walletId);
         const query = searchQuery.trim().toLowerCase();
 
+        // Kiểm tra lọc theo loại trước — exit sớm nếu không khớp
         if (selectedType !== 'all' && transaction.type !== selectedType) {
           return false;
         }
 
+        // Kiểm tra ngày chip đang chọn
         if (activeDay && new Date(transaction.date).getDate() !== activeDay) {
           return false;
         }
@@ -70,6 +81,7 @@ export default function TransactionsScreen() {
           return true;
         }
 
+        // Tìm kiếm full-text trên tên danh mục, ví, và ghi chú — gộp thành 1 chuỗi để tìm 1 lần
         const haystack = [
           category?.name,
           wallet?.name,
@@ -86,6 +98,7 @@ export default function TransactionsScreen() {
 
 
 
+  // Chuyển sang tháng trước — xử lý wrap-around tháng 0 → tháng 11 năm trước
   const previousMonth = () => {
     if (viewMonth === 0) {
       setViewMonth(11);
@@ -95,9 +108,10 @@ export default function TransactionsScreen() {
     }
 
     setViewMonth((month) => month - 1);
-    setSelectedDay(null);
+    setSelectedDay(null); // Reset chip khi đổi tháng để tránh activeDay lỗi
   };
 
+  // Chuyển sang tháng sau — xử lý wrap-around tháng 11 → tháng 0 năm sau
   const nextMonth = () => {
     if (viewMonth === 11) {
       setViewMonth(0);
@@ -110,6 +124,7 @@ export default function TransactionsScreen() {
     setSelectedDay(null);
   };
 
+  // Thực hiện xóa sau khi người dùng xác nhận — lỗi hiển thị qua SoftAlert thay vì crash
   const handleDelete = async (id: string) => {
     try {
       await deleteTransaction(id);
@@ -121,6 +136,7 @@ export default function TransactionsScreen() {
     }
   };
 
+  // Hiện dialog xác nhận trước khi xóa — tránh xóa nhầm do vuốt
   const confirmDelete = (id: string) => {
     SoftAlert.alert('Xoá giao dịch', 'Bạn có chắc muốn xoá giao dịch này không?', [
       { text: 'Huỷ', style: 'cancel' },
@@ -134,6 +150,7 @@ export default function TransactionsScreen() {
     ]);
   };
 
+  // Render nút xóa xuất hiện khi vuốt trái (swipe-to-delete) — kích thước cố định 74px
   const renderRightActions = (id: string) => (
     <TouchableOpacity style={styles.deleteAction} onPress={() => confirmDelete(id)} activeOpacity={0.82}>
       <Ionicons name="trash-outline" size={20} color="#fff" />
@@ -151,6 +168,7 @@ export default function TransactionsScreen() {
             <Text style={styles.headerSub}>{formatMonthYear(viewYear, viewMonth)}</Text>
           </View>
           <View style={styles.headerActions}>
+            {/* Nút search: đổi màu nền khi active để người dùng biết đang bật */}
             <TouchableOpacity
               activeOpacity={0.82}
               style={[styles.headerIcon, showSearch && { backgroundColor: SoftColors.primary }]}
@@ -161,6 +179,7 @@ export default function TransactionsScreen() {
           </View>
         </View>
 
+        {/* Điều hướng tháng — nút trái/phải bao quanh nhãn tháng */}
         <View style={styles.monthRow}>
           <TouchableOpacity onPress={previousMonth} activeOpacity={0.82} style={styles.monthButton}>
             <Ionicons name="chevron-back" size={18} color={SoftColors.text} />
@@ -171,6 +190,7 @@ export default function TransactionsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Segment control lọc loại giao dịch: Tất cả / Thu / Chi */}
         <SoftCard style={styles.segmentWrap}>
           {[
             { key: 'all', label: 'Tất cả' },
@@ -195,6 +215,7 @@ export default function TransactionsScreen() {
           ))}
         </SoftCard>
 
+        {/* Thanh tìm kiếm — chỉ render khi showSearch = true để giảm DOM */}
         {showSearch && (
           <View style={[softInputStyles.inputShell, { marginBottom: 14 }]}>
             <View style={softInputStyles.inputIcon}>
@@ -212,6 +233,7 @@ export default function TransactionsScreen() {
           </View>
         )}
 
+        {/* Chip ngày ngang — chỉ hiện tối đa 7 ngày có giao dịch trong tháng */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -258,11 +280,13 @@ export default function TransactionsScreen() {
               filteredTransactions.map((transaction: Transaction, index: number) => {
                 const category = getCategoryById(transaction.categoryId);
                 const wallet = wallets.find((item) => item.id === transaction.walletId);
+                // Giao dịch transfer cần destWallet để hiển thị tên ví đích
                 const isTransfer = transaction.type === 'transfer';
                 const destWallet = isTransfer ? wallets.find(w => w.id === transaction.toWalletId) : null;
 
 
                 return (
+                    // Swipeable bọc mỗi item để cho phép vuốt trái xóa
                     <Swipeable
                       key={transaction.id}
                       renderRightActions={() => renderRightActions(transaction.id)}
@@ -282,6 +306,7 @@ export default function TransactionsScreen() {
               })
             )}
           </SoftCard>
+          {/* Padding cuối danh sách để nội dung không bị che bởi tab bar */}
           <View style={{ height: 120 }} />
         </ScrollView>
       </SafeAreaView>

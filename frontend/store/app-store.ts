@@ -23,6 +23,7 @@ const customStorage: StateStorage = {
 
     if (name === STORAGE_KEY) {
       try {
+        // Ghép token từ SecureStore vào state trước khi trả về Zustand
         const parsed = JSON.parse(val);
         const token = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
         if (token) {
@@ -47,6 +48,7 @@ const customStorage: StateStorage = {
           if (token) {
             await SecureStore.setItemAsync(SECURE_TOKEN_KEY, token);
           } else {
+            // Không có token → xóa khỏi SecureStore để đồng bộ với trạng thái đăng xuất
             await SecureStore.deleteItemAsync(SECURE_TOKEN_KEY);
           }
           // Xóa token khỏi AsyncStorage — chỉ lưu trong SecureStore
@@ -63,6 +65,7 @@ const customStorage: StateStorage = {
   },
 
   removeItem: async (name: string): Promise<void> => {
+    // Khi xóa storage (ví dụ: đăng xuất), luôn dọn cả SecureStore để không rò rỉ token
     if (name === STORAGE_KEY) {
       await SecureStore.deleteItemAsync(SECURE_TOKEN_KEY);
     }
@@ -70,6 +73,10 @@ const customStorage: StateStorage = {
   },
 };
 
+/**
+ * Store trung tâm của ứng dụng — kết hợp 4 slice: Auth, Data, UI, Chat.
+ * Sử dụng `persist` để hydrate lại state từ storage sau mỗi lần khởi động app.
+ */
 export const useStore = create<AppState>()(
   persist(
     (...a) => {
@@ -90,6 +97,7 @@ export const useStore = create<AppState>()(
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => customStorage),
+      // Chỉ persist những trường cần thiết — tránh lưu dữ liệu nhạy cảm hoặc dễ tái tạo
       partialize: (state) => ({
         selectedWalletId: state.selectedWalletId,
         authToken: state.authToken,
@@ -100,6 +108,7 @@ export const useStore = create<AppState>()(
         // Persist tùy chọn AI để người dùng không bị reset mỗi lần mở app
         aiAssistantEnabled: state.aiAssistantEnabled,
       }),
+      // Callback sau khi Zustand hoàn tất rehydrate từ storage
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();
       },

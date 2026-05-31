@@ -10,6 +10,8 @@ import { tools } from './aiTools.js';
 
 // ─── State Schema ─────────────────────────────────────────────────────────────
 
+// Định nghĩa cấu trúc bộ nhớ ngắn hạn của agent cho mỗi phiên hội thoại.
+// Các trường này được LangGraph lưu vào PostgreSQL checkpoint sau mỗi lượt.
 const agentStateSchema = z.object({
   lastUsedWalletId: z.string().optional().describe('ID ví được sử dụng gần nhất trong phiên'),
   awaitingConfirmation: z.boolean().default(false).describe('Đang chờ người dùng xác nhận hành động nhạy cảm'),
@@ -18,16 +20,25 @@ const agentStateSchema = z.object({
 
 // ─── Agent Factory ────────────────────────────────────────────────────────────
 
+// Singleton pattern: chỉ khởi tạo agent một lần, tái sử dụng cho mọi request.
+// agentPromise ngăn race condition khi nhiều request gọi getAgent() đồng thời lúc cold start.
 let cachedAgent = null;
 let agentPromise = null;
 
+/**
+ * Khởi tạo (hoặc trả về cached) LangGraph agent với LLM, tools, middleware và checkpointer.
+ * Chỉ gọi một lần trong vòng đời server — kết quả được cache lại trong `cachedAgent`.
+ */
 export async function getAgent() {
   if (cachedAgent) return cachedAgent;
+  // Nếu đang trong quá trình khởi tạo, trả về cùng một Promise thay vì tạo thêm instance mới
   if (agentPromise) return agentPromise;
 
   agentPromise = (async () => {
     console.log('--- Initializing AI Agent ---');
 
+    // PostgresSaver lưu checkpoint (lịch sử message + state) theo thread_id (= sessionId)
+    // giúp agent nhớ ngữ cảnh hội thoại xuyên suốt các request HTTP riêng lẻ
     const checkpointer = PostgresSaver.fromConnString(env.postgresUrl);
     await checkpointer.setup();
 
@@ -35,6 +46,8 @@ export async function getAgent() {
       throw new Error('GEMINI_API_KEY is missing.');
     }
 
+    // temperature=0 để output ổn định, deterministic — quan trọng với tác vụ tài chính
+    // maxRetries=0 để tránh gọi lặp khi lỗi, trả về lỗi ngay cho user xử lý
     const llm = new ChatGoogleGenerativeAI({
       model: 'gemini-3.1-flash-lite',
       apiKey: env.ai.geminiKey.trim(),
@@ -44,10 +57,15 @@ export async function getAgent() {
 
     console.log('Chatbot configured with Gemini 3.1 Flash-Lite');
 
+    // Tính tháng trước để đưa vào system prompt, giúp agent biết ngưỡng thời gian cho get_trend_report
     const agentNow = new Date();
     const prevMonthDate = new Date(agentNow.getFullYear(), agentNow.getMonth() - 1, 1);
     const prevMonthStr = `${prevMonthDate.getMonth() + 1}/${prevMonthDate.getFullYear()}`;
 
+    // System prompt được nhúng ngày hiện tại khi agent khởi tạo.
+    // Luật "chỉ gọi đúng 1 tool" (dòng QUY TẮC HOẠT ĐỘNG số 1) là thiết kế chủ ý:
+    // gọi nhiều tool liên tiếp trong một lượt dễ gây lỗi "function response turn" của Gemini
+    // và khó kiểm soát trạng thái state/confirmation flow.
     const systemPrompt = `
 Hôm nay là ngày ${agentNow.toLocaleDateString('vi-VN')}. Bạn là trợ lý tài chính và chuyên gia hoạch định tài chính thông minh của MoneyManager.
 
@@ -91,6 +109,8 @@ HƯỚNG DẪN SỬ DỤNG TOOL:
       tools: tools,
       stateSchema: agentStateSchema,
       middleware: [
+        // summarizationMiddleware tự động tóm tắt lịch sử khi hội thoại dài
+        // (>10 messages hoặc >4000 tokens), giữ lại 5 message gần nhất để tránh vượt context window
         summarizationMiddleware({
           model: llm,
           trigger: [
@@ -99,6 +119,8 @@ HƯỚNG DẪN SỬ DỤNG TOOL:
           ],
           keep: { messages: 5 },
         }),
+        // dynamicSystemPromptMiddleware chèn thêm state hiện tại vào system prompt mỗi lượt
+        // giúp LLM "nhìn thấy" trạng thái bộ nhớ (ví đã dùng, giao dịch nháp đang chờ)
         dynamicSystemPromptMiddleware((state) => {
           let extraPrompt = '\n\n[TRẠNG THÁI BỘ NHỚ HỆ THỐNG (STATE SCHEMA & VALUES)]:';
           for (const [key, field] of Object.entries(agentStateSchema.shape)) {
@@ -109,6 +131,7 @@ HƯỚNG DẪN SỬ DỤNG TOOL:
             extraPrompt += `\n- ${key} (${description}): ${val}`;
           }
 
+          // Nếu đang chờ xác nhận, ép LLM ưu tiên hỏi người dùng trước khi làm bất cứ việc gì khác
           if (state.awaitingConfirmation && state.draftTransaction) {
             const draft = state.draftTransaction;
             extraPrompt += `\n\n[TRẠNG THÁI HỆ THỐNG - QUAN TRỌNG]`;
@@ -117,6 +140,7 @@ HƯỚNG DẪN SỬ DỤNG TOOL:
             extraPrompt += `\n- Nếu người dùng đồng ý/xác nhận (ví dụ: "đồng ý", "xác nhận", "ok", "lưu đi"), bạn BẮT BUỘC phải gọi công cụ [confirm_draft_transaction].`;
             extraPrompt += `\n- Nếu người dùng từ chối/hủy bỏ (ví dụ: "hủy", "không đồng ý", "thôi"), bạn BẮT BUỘC phải gọi công cụ [cancel_draft_transaction].`;
           }
+          // Gợi ý tái sử dụng ví đã dùng gần đây để giảm câu hỏi lặp với user
           if (state.lastUsedWalletId) {
             extraPrompt += `\n\n[TRẠNG THÁI HỆ THỐNG]`;
             extraPrompt += `\n- ID ví sử dụng gần nhất trong phiên là: ${state.lastUsedWalletId}. Nếu người dùng thêm giao dịch mới mà không nói tên ví, bạn có thể tự động đề xuất sử dụng ví này.`;
@@ -125,6 +149,7 @@ HƯỚNG DẪN SỬ DỤNG TOOL:
         }),
       ],
       checkpointer,
+      // maxIterations=5 giới hạn số vòng lặp tool-calling trong một request, tránh vòng lặp vô tận
       maxIterations: 5,
       systemPrompt,
     });
@@ -134,6 +159,7 @@ HƯỚNG DẪN SỬ DỤNG TOOL:
     cachedAgent = await agentPromise;
     return cachedAgent;
   } finally {
+    // Xóa agentPromise sau khi hoàn thành để tránh giữ reference không cần thiết
     agentPromise = null;
   }
 }
@@ -143,12 +169,24 @@ HƯỚNG DẪN SỬ DỤNG TOOL:
  * @typedef {import('langchain').InferAgentStateSchema<Awaited<ReturnType<typeof getAgent>>>} AgentStateSchema
  */
 
+/**
+ * Gửi một tin nhắn của người dùng đến AI agent và nhận phản hồi.
+ * Truyền userId và sessionId qua config.configurable để tools có thể truy cập đúng dữ liệu.
+ * @param {string} userId - ID người dùng hiện tại (dùng để lọc dữ liệu trong tools)
+ * @param {string} sessionId - ID phiên hội thoại, ánh xạ trực tiếp đến thread_id của LangGraph checkpoint
+ * @param {string} message - Nội dung tin nhắn người dùng
+ * @param {object} extraContext - Context bổ sung truyền vào config.configurable (vd: skipConfirmation)
+ * @returns {{ text: string, dataModified: boolean }}
+ */
 export async function chatWithAI(userId, sessionId, message, extraContext = {}) {
+  // Hard timeout 45s: Gemini API đôi khi bị treo, cần abort để tránh request chờ vô thời hạn
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s hard cap to allow tool calling
 
   try {
     const agent = await getAgent();
+    // thread_id = sessionId: LangGraph dùng để tra cứu checkpoint đúng phiên hội thoại
+    // userId và sessionId được truyền vào configurable để tools có thể đọc qua config.configurable
     const config = {
       configurable: { thread_id: sessionId, userId, sessionId, ...extraContext },
       signal: controller.signal,
@@ -163,6 +201,7 @@ export async function chatWithAI(userId, sessionId, message, extraContext = {}) 
     if (currentState?.values?.messages?.length > 0) {
       const msgs = currentState.values.messages;
       let hasHangingToolCall = false;
+      // Duyệt tìm AIMessage có tool_calls nhưng không có ToolMessage phản hồi ngay sau
       for (let i = 0; i < msgs.length; i++) {
         const msg = msgs[i];
         if (msg.tool_calls && msg.tool_calls.length > 0) {
@@ -175,6 +214,7 @@ export async function chatWithAI(userId, sessionId, message, extraContext = {}) 
         }
       }
 
+      // Recovery: tạo thread_id mới để bỏ qua state bị hỏng, tránh truyền lỗi sang lượt sau
       if (hasHangingToolCall) {
         console.warn(`[AI Agent] State for session ${sessionId} has hanging tool_calls. Resetting thread.`);
         config.configurable.thread_id = `${sessionId}_recovery_${Date.now()}`;
@@ -193,6 +233,9 @@ export async function chatWithAI(userId, sessionId, message, extraContext = {}) 
 
     const lastMsg = result.messages[result.messages.length - 1];
 
+    // dataModified flag: kiểm tra xem agent có gọi tool nào thay đổi dữ liệu không.
+    // Frontend dùng flag này để tự động refetch dữ liệu thay vì phân tích text của AI — tránh heuristic mong manh.
+    // confirm_draft_transaction được tính là mutation vì nó thực thi giao dịch nháp thật sự.
     const mutationTools = ['add_transaction', 'update_transaction', 'delete_transaction', 'set_budget', 'transfer_funds', 'confirm_draft_transaction'];
     const dataModified = result.messages.some(
       (msg) =>
@@ -207,6 +250,7 @@ export async function chatWithAI(userId, sessionId, message, extraContext = {}) 
       throw new Error('Yêu cầu AI quá lâu (45 giây) và đã bị ngắt tự động. Vui lòng thử lại.', { cause: error });
     }
 
+    // Reset cache khi agent gặp lỗi nghiêm trọng — lần gọi tiếp theo sẽ khởi tạo lại từ đầu
     console.error('AI Chat error, resetting cache:', error.message);
     cachedAgent = null;
     throw error;

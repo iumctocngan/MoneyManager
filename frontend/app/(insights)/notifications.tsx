@@ -16,6 +16,10 @@ import { SoftBackdrop, SoftCard } from '@/components/ui/soft';
 import { generateNotifications } from '@/services/notification.service';
 import { AppNotification } from '@/constants/types';
 
+/**
+ * Định dạng timestamp thành dạng tương đối (vd: "5 phút trước", "Hôm qua")
+ * hiển thị thân thiện hơn so với ngày giờ tuyệt đối
+ */
 function getRelativeTime(timestamp: string): string {
   const now = new Date();
   const date = new Date(timestamp);
@@ -56,11 +60,13 @@ function NotificationCard({ notification }: { notification: AppNotification }) {
 export default function NotificationsScreen() {
   const { budgets, transactions, getCategoryById } = useStore();
 
+  // Tạo danh sách thông báo từ dữ liệu ngân sách và giao dịch (logic ở notification.service)
   const notifications = useMemo(
     () => generateNotifications(budgets, transactions, getCategoryById),
     [budgets, transactions, getCategoryById]
   );
 
+  // Phân loại: cảnh báo ngân sách hiển thị riêng, gợi ý tài chính hiển thị riêng
   const budgetAlerts = notifications.filter(
     (n) => n.type === 'budget_warning' || n.type === 'budget_exceeded'
   );

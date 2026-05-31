@@ -27,15 +27,19 @@ export default function ReportScreen() {
     quarter: 'Quý này',
     year: 'Năm nay',
   };
+  // Fallback về 'Tháng này' nếu period không khớp bất kỳ key nào
   const periodLabel = periodLabels[period as keyof typeof periodLabels] || 'Tháng này';
 
+  // Tính tổng, phân bổ danh mục và top 4 danh mục theo loại (chi/thu) đã chọn
   const { totalAmount, categoryBreakdown, top4Cats, othersAmount, realTotal } = useMemo(() => {
     return generateFinancialReport(transactions, period, activeTab);
   }, [transactions, period, activeTab]);
 
+  // Mỗi tab (chi/thu) dùng bảng màu riêng để phân biệt trực quan trên biểu đồ
   const expenseColors = ['#FAD02C', Colors.expense, SoftColors.mint, SoftColors.purple];
   const incomeColors = [Colors.income, '#FFC08A', '#4EAFFF', '#C8A4FF'];
   const chartColors = activeTab === 'expense' ? expenseColors : incomeColors;
+  // Xây dựng model cho donut chart từ top 4 danh mục, gộp phần còn lại thành "Khác"
   const donutModel = useMemo(
     () => buildDonutChartModel(top4Cats, othersAmount, realTotal, chartColors),
     [top4Cats, othersAmount, realTotal, chartColors]
@@ -110,8 +114,10 @@ export default function ReportScreen() {
           <View style={styles.listContainer}>
             {categoryBreakdown.map((item, index) => {
               const cat = getCategoryById(item.id);
+              // Top 4 danh mục được tô màu nổi bật theo bảng màu, còn lại dùng màu mờ
               const isTop4 = index < 4;
               const barColor = isTop4 ? chartColors[index % chartColors.length] : SoftColors.muted;
+              // Math.max(totalAmount, 1) tránh chia cho 0 khi chưa có giao dịch
               const percentage = (item.amount / Math.max(totalAmount, 1)) * 100;
 
               return (

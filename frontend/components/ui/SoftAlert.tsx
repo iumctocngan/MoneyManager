@@ -13,12 +13,14 @@ import { Colors, SoftColors, shadow } from '@/constants/design';
 import { LinearGradient } from 'expo-linear-gradient';
 import { create } from 'zustand';
 
+/** Định nghĩa một nút bấm trong dialog alert, tương tự API của React Native Alert. */
 export interface SoftAlertButton {
   text: string;
   onPress?: () => void;
   style?: 'default' | 'cancel' | 'destructive';
 }
 
+/** State nội bộ của alert — dùng Zustand để cho phép gọi alert từ ngoài component tree. */
 interface AlertState {
   visible: boolean;
   title: string;
@@ -34,6 +36,10 @@ interface AlertState {
   hide: () => void;
 }
 
+/**
+ * Zustand store cho alert — dùng pattern imperative (gọi trực tiếp qua `useAlertStore.getState()`)
+ * thay vì truyền props, cho phép trigger alert từ bất kỳ đâu (hook, service, v.v.).
+ */
 export const useAlertStore = create<AlertState>((set) => ({
   visible: false,
   title: '',
@@ -45,6 +51,11 @@ export const useAlertStore = create<AlertState>((set) => ({
   hide: () => set({ visible: false }),
 }));
 
+/**
+ * API tĩnh thay thế cho `Alert.alert()` của React Native.
+ * Tự động suy ra `type` từ nội dung title/message nếu không truyền tường minh,
+ * giúp code gọi alert gọn hơn mà vẫn hiển thị đúng màu sắc/icon.
+ */
 export const SoftAlert = {
   alert: (
     title: string,
@@ -53,6 +64,7 @@ export const SoftAlert = {
     type?: 'info' | 'success' | 'warning' | 'error'
   ) => {
     let inferredType: 'info' | 'success' | 'warning' | 'error' = type || 'info';
+    // Nếu không truyền type, suy ra từ từ khoá trong title/message
     if (!type) {
       const lowerTitle = title.toLowerCase();
       const lowerMessage = message.toLowerCase();
@@ -62,6 +74,7 @@ export const SoftAlert = {
         lowerTitle.includes('log out');
 
       if (isLogout) {
+        // Đăng xuất dùng 'info' thay vì 'warning' để tránh cảm giác tiêu cực
         inferredType = 'info';
       } else if (
         lowerTitle.includes('xoá') ||
@@ -92,14 +105,17 @@ export const SoftAlert = {
 
 const { width } = Dimensions.get('window');
 
+/** Component render alert dialog — phải được mount một lần duy nhất ở root layout. */
 export function SoftAlertComponent() {
   const { visible, title, message, buttons, type, hide } = useAlertStore();
 
+  // Khởi tạo animated values bên ngoài useEffect để tránh re-create mỗi lần render
   const [scaleAnim] = React.useState(new Animated.Value(0.85));
   const [opacityAnim] = React.useState(new Animated.Value(0));
 
   React.useEffect(() => {
     if (visible) {
+      // Dùng spring cho scale để cảm giác dialog "bật" ra tự nhiên, không cứng
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
@@ -114,11 +130,13 @@ export function SoftAlertComponent() {
         }),
       ]).start();
     } else {
+      // Reset ngay (không animate) khi ẩn để lần mở tiếp theo bắt đầu từ trạng thái ban đầu
       scaleAnim.setValue(0.85);
       opacityAnim.setValue(0);
     }
   }, [visible, scaleAnim, opacityAnim]);
 
+  // Không render gì khi ẩn — tránh Modal chiếm lớp touch của màn hình
   if (!visible) return null;
 
   // Map type to icons and colors
@@ -132,6 +150,7 @@ export function SoftAlertComponent() {
     lowerTitle.includes('logout') ||
     lowerTitle.includes('log out');
 
+  // Chọn icon và màu glow tương ứng với từng loại alert
   if (isLogout) {
     iconName = 'log-out-outline';
     iconColors = [SoftColors.blue || Colors.info, Colors.info];
@@ -153,12 +172,15 @@ export function SoftAlertComponent() {
   const handleButtonPress = (btn: SoftAlertButton) => {
     hide();
     if (btn.onPress) {
+      // Delay nhỏ để Modal đóng trước khi callback chạy,
+      // tránh navigation conflict khi callback push một màn hình mới
       setTimeout(() => {
         btn.onPress?.();
       }, 100);
     }
   };
 
+  /** Render layout nút: 0 nút → mặc định "Đồng ý", 2 nút → nằm ngang, nhiều hơn → xếp dọc. */
   const renderButtons = () => {
     if (!buttons || buttons.length === 0) {
       return (
@@ -269,6 +291,7 @@ export function SoftAlertComponent() {
   };
 
   return (
+    // animationType="none" vì animation được xử lý thủ công bằng Animated API để kiểm soát tốt hơn
     <Modal transparent visible={visible} animationType="none">
       <View style={styles.overlay}>
         <Animated.View
@@ -285,6 +308,7 @@ export function SoftAlertComponent() {
               <LinearGradient colors={iconColors} style={styles.iconGradient}>
                 <Ionicons name={iconName} size={38} color="#fff" />
               </LinearGradient>
+              {/* Vòng glow phía sau icon — tạo hiệu ứng ánh sáng lan toả */}
               <View style={[styles.iconGlow, { backgroundColor: glowColor }]} />
             </View>
 
@@ -308,6 +332,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   container: {
+    // Giới hạn chiều rộng tối đa trên tablet; trên điện thoại dùng 88% màn hình
     width: width > 420 ? 380 : width * 0.88,
     backgroundColor: '#fff',
     borderRadius: 28,

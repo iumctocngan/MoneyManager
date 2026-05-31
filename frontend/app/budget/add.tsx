@@ -24,20 +24,24 @@ export default function AddBudgetScreen() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [period, setPeriod] = useState<'monthly' | 'weekly' | 'yearly'>('monthly');
 
+  // Loại bỏ ký tự không phải số — số tiền ngân sách lưu dạng INTEGER
   const handleAmountChange = (text: string) => {
     setAmount(text.replace(/[^0-9]/g, ''));
   };
 
+  // Tính khoảng thời gian áp dụng ngân sách dựa trên chu kỳ đã chọn
   const getDateRange = () => {
     const now = new Date();
 
     if (period === 'monthly') {
+      // Ngày 1 đến ngày cuối của tháng hiện tại
       const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
       const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       return { start, end };
     }
 
     if (period === 'weekly') {
+      // Tính thứ 2 đầu tuần — getDay() trả về 0 (CN), diffToMonday điều chỉnh về đầu tuần ISO (Thứ 2)
       const day = now.getDay();
       const diffToMonday = day === 0 ? -6 : 1 - day;
       const start = new Date(now);
@@ -50,11 +54,13 @@ export default function AddBudgetScreen() {
       return { start, end };
     }
 
+    // Mặc định: yearly — 01/01 đến 31/12 năm hiện tại
     const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
     const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
     return { start, end };
   };
 
+  // Validate theo thứ tự: số tiền → danh mục trước khi gọi API
   const handleSave = async () => {
     if (!amount || parseInt(amount, 10) === 0) {
       SoftAlert.alert('Thiếu số tiền', 'Vui lòng nhập số tiền ngân sách.');

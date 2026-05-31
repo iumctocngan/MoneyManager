@@ -28,13 +28,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// Bảng màu cố định cho 4 danh mục chi tiêu lớn nhất trên biểu đồ donut
 const EXPENSE_CHART_COLORS = ['#FAD02C', Colors.expense, SoftColors.mint, SoftColors.purple];
 
 export default function HomeScreen() {
   const { wallets, transactions, budgets, getTotalBalance, getCategoryById, refreshState, user } = useStore();
+  // showBalance: ẩn/hiện số dư — tránh lộ thông tin khi dùng nơi công cộng
   const [showBalance, setShowBalance] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Đếm số thông báo (ngân sách sắp vượt, v.v.) để hiển thị badge trên icon chuông
   const notificationCount = useMemo(
     () => generateNotifications(budgets, transactions, getCategoryById).length,
     [budgets, transactions, getCategoryById]
@@ -43,12 +46,15 @@ export default function HomeScreen() {
 
 
   const [period, setPeriod] = useState('month');
+  // showPeriodMenu: kiểm soát dropdown chọn kỳ (hôm nay / tuần / tháng / quý / năm)
   const [showPeriodMenu, setShowPeriodMenu] = useState(false);
 
+  // Lọc giao dịch theo kỳ được chọn — tránh tính toán lại khi kỳ hoặc dữ liệu không đổi
   const filteredTxs = useMemo(() => {
     return filterTransactionsByPeriod(transactions, period);
   }, [period, transactions]);
 
+  // Tính tổng thu / chi cho kỳ hiện tại — dùng trực tiếp từ filteredTxs đã memo
   const monthIncome = filteredTxs
     .filter((transaction) => transaction.type === 'income')
     .reduce((sum, transaction) => sum + transaction.amount, 0);
@@ -57,6 +63,7 @@ export default function HomeScreen() {
     .reduce((sum, transaction) => sum + transaction.amount, 0);
   const totalBalance = getTotalBalance();
 
+  // Chỉ lấy 5 giao dịch gần nhất để hiển thị trên Home, tránh render danh sách dài
   const recentTransactions = useMemo(
     () =>
       [...transactions]
@@ -67,6 +74,7 @@ export default function HomeScreen() {
 
 
 
+  // Tính top 4 danh mục chi tiêu lớn nhất và phần còn lại cho biểu đồ donut
   const {
     top4Cats: top4Exp,
     othersAmount,
@@ -76,6 +84,7 @@ export default function HomeScreen() {
     return generateFinancialReport(transactions, period, 'expense', txConverter);
   }, [transactions, period]);
 
+  // Chuyển dữ liệu thô thành model (segment + legend) mà DonutChart có thể render
   const expenseDonut = useMemo(
     () => buildDonutChartModel(top4Exp, othersAmount, totalExpense, EXPENSE_CHART_COLORS),
     [top4Exp, othersAmount, totalExpense]
@@ -88,13 +97,16 @@ export default function HomeScreen() {
     quarter: 'Quý này',
     year: 'Năm nay',
   };
+  // Fallback về 'Tháng này' nếu period không khớp key nào (phòng trường hợp state lỗi)
   const periodLabel = PERIOD_LABELS[period as keyof typeof PERIOD_LABELS] || 'Tháng này';
 
+  // Pull-to-refresh: đồng bộ lại toàn bộ state từ SQLite / backend
   const onRefresh = async () => {
     setRefreshing(true);
     try {
       await refreshState();
     } finally {
+      // Đảm bảo spinner luôn dừng dù refreshState thành công hay lỗi
       setRefreshing(false);
     }
   };
@@ -112,6 +124,7 @@ export default function HomeScreen() {
             <View>
               <Text style={styles.headerTitle}>Xin chào {user?.name || 'bạn'} 👋</Text>
             </View>
+            {/* Nút chuông: điều hướng đến màn hình thông báo; badge đỏ hiện khi có cảnh báo */}
             <TouchableOpacity
               activeOpacity={0.85}
               style={styles.headerIcon}
@@ -122,6 +135,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Thẻ tổng số dư với gradient — nhấn mắt, là điểm nhìn đầu tiên của người dùng */}
           <LinearGradient colors={[SoftColors.primary, '#5FE59D']} style={styles.balanceCard}>
             <View style={styles.balanceTop}>
               <View style={{ flex: 1 }}>
@@ -130,6 +144,7 @@ export default function HomeScreen() {
                   {showBalance ? formatCurrency(totalBalance) : '••••••••'}
                 </Text>
               </View>
+              {/* Toggle hiển thị/ẩn số dư */}
               <TouchableOpacity
                 activeOpacity={0.84}
                 style={styles.eyeButton}
@@ -144,6 +159,7 @@ export default function HomeScreen() {
             </View>
           </LinearGradient>
 
+          {/* Thẻ tóm tắt thu / chi cho kỳ đang chọn */}
           <View style={styles.summaryRow}>
             <SoftCard style={styles.summaryCard}>
               <View style={[styles.summaryIcon, { backgroundColor: `${Colors.income}20` }]}>
@@ -207,6 +223,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </ScrollView>
 
+          {/* Header khu vực báo cáo — zIndex cao hơn card bên dưới để dropdown không bị che */}
           <View style={styles.reportSectionHeader}>
             <Text style={styles.reportTitleMain}>Tình hình thu chi</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -216,6 +233,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Dropdown chọn kỳ — render inline để tránh dùng Modal (giữ scroll flow tự nhiên) */}
             {showPeriodMenu && (
               <View style={styles.periodMenu}>
                 {[
@@ -223,7 +241,7 @@ export default function HomeScreen() {
                   { id: 'week', label: 'Tuần này' },
                   { id: 'month', label: 'Tháng này' },
                   { id: 'quarter', label: 'Quý này' },
-                  { id: 'year', label: 'Năm nay' },
+                  { id: 'năm nay', label: 'Năm nay' },
                 ].map(p => (
                   <TouchableOpacity
                     key={p.id}
@@ -238,9 +256,11 @@ export default function HomeScreen() {
             )}
           </View>
 
+          {/* Card báo cáo: nhấn vào để mở màn hình Report chi tiết với kỳ hiện tại */}
           <SoftCard style={[styles.reportCard, { zIndex: -1 }]}>
             <TouchableOpacity activeOpacity={1} onPress={() => router.push({ pathname: '/report', params: { period } } as any)}>
               <View style={styles.newReportTop}>
+                {/* Biểu đồ cột mini: chiều cao tỷ lệ với thu/chi, tối thiểu 15% để luôn nhìn thấy */}
                 <View style={styles.barChartContainer}>
                   <View
                     style={[
@@ -278,6 +298,7 @@ export default function HomeScreen() {
                   <View style={styles.divider} />
                   <View style={styles.valueRow}>
                     <Text style={styles.valueLabel}>Chênh lệch</Text>
+                    {/* Dùng Math.abs để chênh lệch luôn dương — màu sắc thể hiện âm/dương */}
                     <Text style={[styles.valueAmount, { color: SoftColors.text, fontWeight: '900' }]}>
                       {formatCurrency(Math.abs(monthIncome - monthExpense))}
                     </Text>
@@ -292,6 +313,7 @@ export default function HomeScreen() {
 
                 <View style={styles.legendContainer}>
                   {expenseDonut.legendItems.map((item) => {
+                    // item.isOther = true nghĩa là nhóm "Các khoản còn lại" (gộp nhiều danh mục nhỏ)
                     const cat = item.isOther ? null : getCategoryById(item.id);
                     const p = item.percentage.toFixed(2).replace('.', ',');
                     return (
@@ -302,6 +324,7 @@ export default function HomeScreen() {
                       </View>
                     );
                   })}
+                  {/* Đoạn này bị tắt (false &&) — giữ lại làm tham chiếu nếu cần hiển thị riêng nhóm "Còn lại" */}
                   {false && (
                     <View style={styles.legendRow}>
                       <View style={[styles.legendDot, { backgroundColor: 'rgba(174, 213, 188, 0.4)' }]} />
@@ -343,6 +366,7 @@ export default function HomeScreen() {
               recentTransactions.map((transaction: Transaction, index: number) => {
                 const category = getCategoryById(transaction.categoryId);
                 const wallet = wallets.find((item: Wallet) => item.id === transaction.walletId);
+                // Giao dịch chuyển khoản cần ví đích để hiển thị đúng chiều mũi tên
                 const isTransfer = transaction.type === 'transfer';
                 const destWallet = isTransfer ? wallets.find((w: Wallet) => w.id === transaction.toWalletId) : null;
 

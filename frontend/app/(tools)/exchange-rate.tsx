@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// Danh sách ngoại tệ phổ biến với người dùng Việt Nam sẽ hiển thị tỷ giá quy đổi sang VNĐ
 const TARGET_CURRENCIES = [
   { code: 'USD', name: 'Đô la Mỹ', flag: '🇺🇸' },
   { code: 'EUR', name: 'Euro', flag: '🇪🇺' },
@@ -32,6 +33,7 @@ export default function ExchangeRateScreen() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string>('');
 
+  // Gọi API tỷ giá thời gian thực — dùng lại khi người dùng nhấn nút refresh
   const loadRates = async () => {
     try {
       setLoading(true);
@@ -46,6 +48,7 @@ export default function ExchangeRateScreen() {
     }
   };
 
+  // Tải tỷ giá ngay khi màn hình được mount
   useEffect(() => {
     void loadRates();
   }, []);
@@ -88,7 +91,9 @@ export default function ExchangeRateScreen() {
 
               <SoftCard style={styles.listCard}>
                 {TARGET_CURRENCIES.map((item, index) => {
+                  // Tính số VNĐ tương đương 1 đơn vị ngoại tệ từ bảng tỷ giá
                   const vndValue = calculateVndEquivalent(item.code, rates);
+                  // Ẩn đường kẻ dưới hàng cuối để UI sạch hơn
                   const isLast = index === TARGET_CURRENCIES.length - 1;
 
                   return (

@@ -1,7 +1,12 @@
 import dotenv from 'dotenv';
 
+// Nạp biến môi trường từ file .env vào process.env (chỉ có tác dụng ở local/dev)
 dotenv.config();
 
+/**
+ * Đọc biến môi trường kiểu số, trả về fallback nếu chưa đặt.
+ * Ném lỗi ngay khi khởi động nếu giá trị không hợp lệ — fail-fast thay vì lỗi ngầm lúc runtime.
+ */
 function getNumber(name, fallback) {
   const rawValue = process.env[name];
 
@@ -18,17 +23,24 @@ function getNumber(name, fallback) {
   return value;
 }
 
+/**
+ * Đọc biến môi trường kiểu chuỗi, trả về fallback nếu chưa đặt hoặc rỗng.
+ */
 function getString(name, fallback = '') {
   const rawValue = process.env[name];
   return rawValue === undefined || rawValue === '' ? fallback : rawValue;
 }
 
+// Toàn bộ config được tập trung tại đây — các module khác chỉ import env, không đọc process.env trực tiếp
 export const env = {
   nodeEnv: getString('NODE_ENV', 'development'),
   port: getNumber('PORT', 4000),
+  // Mặc định '*' cho phép tất cả origin — cần thay bằng domain cụ thể trên production
   corsOrigin: getString('CORS_ORIGIN', '*'),
   auth: {
+    // Fallback secret chỉ dùng cho dev; production phải đặt AUTH_TOKEN_SECRET thực sự
     tokenSecret: getString('AUTH_TOKEN_SECRET', 'dev-insecure-secret'),
+    // TTL mặc định 168 giờ = 7 ngày — token tồn tại đủ lâu để không phải đăng nhập lại thường xuyên
     accessTokenTtlHours: getNumber('ACCESS_TOKEN_TTL_HOURS', 168),
   },
   db: {

@@ -26,9 +26,11 @@ export const createAuthSlice: StateCreator<
 > = (set, get) => ({
   authToken: null,
   user: null,
+  // Trạng thái ban đầu trước khi app kiểm tra xác thực
   authStatus: 'signed_out',
 
   signIn: async (email, password) => {
+    // Chụp snapshot local trước khi đăng nhập — dùng để import nếu tài khoản mới chưa có dữ liệu
     const localSnapshot = snapshotFromState(get());
     set({ isBusy: true });
     try {
@@ -42,6 +44,7 @@ export const createAuthSlice: StateCreator<
   },
 
   signUp: async ({ email, password, name }) => {
+    // Tương tự signIn: chụp snapshot local để import vào tài khoản mới nếu server trống
     const localSnapshot = snapshotFromState(get());
     set({ isBusy: true });
     try {
@@ -55,6 +58,7 @@ export const createAuthSlice: StateCreator<
   },
 
   signOut: async () => {
+    // Reset toàn bộ dữ liệu người dùng về trạng thái ban đầu; isInitialized giữ true để không chạy lại init
     set({
       transactions: [],
       wallets: [],
@@ -69,6 +73,11 @@ export const createAuthSlice: StateCreator<
   },
 });
 
+/**
+ * Xử lý sau khi đăng nhập / đăng ký thành công:
+ * - Nếu server chưa có dữ liệu nhưng local có → import local lên server (onboarding offline).
+ * - Ngược lại → sync pending mutations rồi kéo snapshot mới nhất từ server về.
+ */
 async function handleAuthSuccess(
   set: (partial: Partial<AppState>) => void,
   get: () => AppState,
@@ -83,15 +92,18 @@ async function handleAuthSuccess(
   });
 
   const remoteSnapshot = await api.getState(result.accessToken);
+  // Ưu tiên import dữ liệu local khi tài khoản hoàn toàn mới (server rỗng) nhưng đã có dữ liệu offline
   const shouldImportLocalState = isSnapshotEmpty(remoteSnapshot) && !isSnapshotEmpty(localSnapshot);
 
   if (shouldImportLocalState) {
     const importedSnapshot = await api.importState(result.accessToken, localSnapshot);
+    // Xóa pending mutations sau khi import thành công — server đã có dữ liệu mới nhất
     set({ pendingMutations: [], lastSyncError: null });
     await get().mergeRemoteSnapshot(importedSnapshot);
     return;
   }
 
+  // Đường bình thường: đẩy các thay đổi offline lên trước, rồi kéo trạng thái mới nhất về
   await get().syncPendingMutations();
   const refreshedSnapshot = await api.getState(result.accessToken);
   await get().mergeRemoteSnapshot(refreshedSnapshot);

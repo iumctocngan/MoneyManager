@@ -30,6 +30,7 @@ export default function MoreScreen() {
   const totalBalance = getTotalBalance();
 
 
+  // Hiện dialog xác nhận trước khi đăng xuất — tránh mất session do nhấn nhầm
   const handleLogout = () => {
     SoftAlert.alert('Đăng xuất', 'Bạn muốn đăng xuất khỏi thiết bị này?', [
       { text: 'Huỷ', style: 'cancel' },
@@ -48,17 +49,20 @@ export default function MoreScreen() {
       <SoftBackdrop />
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          {/* Hero profile: gradient card hiển thị avatar và thông tin cơ bản của user */}
           <LinearGradient colors={[SoftColors.primary, '#5AE29A']} style={styles.hero}>
             <View style={styles.avatarWrap}>
               <View style={styles.avatar}>
                 <Ionicons name="person-outline" size={34} color={SoftColors.primaryDark} />
               </View>
+              {/* Chấm trạng thái online — luôn hiển thị xanh (hiện tại chưa check realtime) */}
               <View style={styles.statusDot} />
             </View>
             <Text style={styles.userName}>{user?.name || 'Người dùng'}</Text>
             <Text style={styles.userEmail}>{user?.email || 'Chưa có email'}</Text>
           </LinearGradient>
 
+          {/* Thống kê nhanh: số ví, số giao dịch, tổng số dư */}
           <View style={styles.statsRow}>
             <SoftCard style={styles.statCard}>
               <Text style={styles.statValue}>{wallets.length}</Text>
@@ -81,6 +85,7 @@ export default function MoreScreen() {
 
           <SectionHeading title="Tuỳ chọn" />
           <SoftCard style={styles.sectionCard}>
+            {/* Kích hoạt AI assistant trước khi navigate để đảm bảo trạng thái sẵn sàng */}
             <MenuRow 
               icon="sparkles-outline" 
               color={SoftColors.primary} 
@@ -96,6 +101,7 @@ export default function MoreScreen() {
 
           <SectionHeading title="Tài khoản" />
           <SoftCard style={styles.sectionCard}>
+            {/* Email chỉ hiển thị, không có onPress — MenuRow tự disable touch khi không có handler */}
             <MenuRow icon="mail-outline" color="#8A98AA" label="Email" value={user?.email || '-'} />
             <MenuRow icon="log-out-outline" color={Colors.expense} label="Đăng xuất" onPress={handleLogout} last destructive />
           </SoftCard>
@@ -106,6 +112,11 @@ export default function MoreScreen() {
   );
 }
 
+/**
+ * Component dòng menu tái sử dụng — hỗ trợ hiển thị icon, nhãn, giá trị tĩnh,
+ * element tùy chỉnh bên phải, và trạng thái destructive (màu đỏ).
+ * Khi không có onPress, item bị vô hiệu hóa touch để dùng như label thuần túy.
+ */
 function MenuRow({
   icon,
   color,
@@ -130,6 +141,7 @@ function MenuRow({
       activeOpacity={onPress ? 0.82 : 1}
       disabled={!onPress}
       onPress={onPress}
+      // last = true → ẩn border bottom để tránh đường kẻ thừa cuối card
       style={[styles.menuRow, last && styles.menuRowLast]}
     >
       <View style={[styles.menuIcon, { backgroundColor: `${color}20` }]}>
@@ -138,6 +150,7 @@ function MenuRow({
       <Text style={[styles.menuLabel, destructive && { color: Colors.expense }]}>{label}</Text>
       <View style={styles.menuRight}>
         {value ? <Text style={styles.menuValue}>{value}</Text> : null}
+        {/* Ưu tiên rightElement tùy chỉnh; nếu không có thì hiện mũi tên khi có onPress */}
         {rightElement || (onPress ? <Ionicons name="chevron-forward" size={16} color={SoftColors.muted} /> : null)}
       </View>
     </TouchableOpacity>

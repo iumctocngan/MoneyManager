@@ -5,6 +5,7 @@ import { HttpError } from '../utils/http-error.js';
 import { mapTransaction } from '../utils/serializers.js';
 import { adjustWalletBalance, assertWalletExists } from './wallet.service.js';
 
+// Các cột cần lấy khi query giao dịch — không lấy user_id để tránh lộ thông tin thừa
 const TRANSACTION_SELECT = `
   SELECT
     id,
@@ -19,6 +20,10 @@ const TRANSACTION_SELECT = `
   FROM transactions
 `;
 
+/**
+ * Xác minh ví hợp lệ trước khi tạo/cập nhật giao dịch.
+ * Với loại 'transfer', bắt buộc phải có toWalletId và hai ví phải khác nhau.
+ */
 async function assertTransactionWallets(connection, userId, transaction) {
   await assertWalletExists(connection, userId, transaction.walletId, 'walletId');
 
@@ -35,6 +40,12 @@ async function assertTransactionWallets(connection, userId, transaction) {
   }
 }
 
+/**
+ * Áp dụng hoặc hoàn tác ảnh hưởng của giao dịch lên số dư ví.
+ * factor = 1: áp dụng (tạo mới / khôi phục).
+ * factor = -1: hoàn tác (xóa / trước khi cập nhật).
+ * Thiết kế này giúp tái sử dụng logic cho cả create, update, delete.
+ */
 async function applyTransactionEffect(connection, userId, transaction, factor) {
   const signedAmount = Number(transaction.amount) * factor;
 
@@ -44,6 +55,7 @@ async function applyTransactionEffect(connection, userId, transaction, factor) {
   }
 
   if (transaction.type === 'expense') {
+    // Chi tiêu làm giảm số dư, nên nhân thêm -1
     await adjustWalletBalance(connection, userId, transaction.walletId, -signedAmount);
     return;
   }
@@ -53,6 +65,12 @@ async function applyTransactionEffect(connection, userId, transaction, factor) {
   await adjustWalletBalance(connection, userId, transaction.toWalletId, signedAmount);
 }
 
+/**
+ * Lấy danh sách giao dịch với các bộ lọc tùy chọn.
+ * Query được xây dựng động dựa trên filters để tránh inject SQL,
+ * sử dụng named parameters (:param) thay vì nối chuỗi trực tiếp.
+ * walletId lọc cả wallet_id lẫn to_wallet_id để bắt giao dịch chuyển khoản.
+ */
 export async function listTransactions(userId, filters = {}, executor = query) {
   const conditions = [];
   const params = { userId };
@@ -60,6 +78,7 @@ export async function listTransactions(userId, filters = {}, executor = query) {
   conditions.push('user_id = :userId');
 
   if (filters.walletId) {
+    // Lọc cả hai chiều của giao dịch chuyển khoản
     conditions.push('(wallet_id = :walletId OR to_wallet_id = :walletId)');
     params.walletId = filters.walletId;
   }
@@ -69,6 +88,7 @@ export async function listTransactions(userId, filters = {}, executor = query) {
     params.type = filters.type;
   }
 
+  // Lọc theo danh sách ID — dùng cho batch fetch sau khi import
   if (Array.isArray(filters.ids) && filters.ids.length > 0) {
     conditions.push('id IN (:ids)');
     params.ids = filters.ids;
@@ -84,6 +104,7 @@ export async function listTransactions(userId, filters = {}, executor = query) {
     params.endDate = filters.endDate;
   }
 
+  // LIMIT chỉ được thêm khi có giá trị hợp lệ — tránh inject SQL bằng Number()
   let limitClause = '';
   if (typeof filters.limit === 'number' && filters.limit > 0) {
     limitClause = ` LIMIT ${Number(filters.limit)}`;
@@ -99,6 +120,7 @@ export async function listTransactions(userId, filters = {}, executor = query) {
   return rows.map(mapTransaction);
 }
 
+/** Lấy một giao dịch theo ID, trả về null nếu không tìm thấy. */
 export async function getTransactionById(userId, id, executor = query) {
   const rows = await execute(
     executor,
@@ -109,7 +131,13 @@ export async function getTransactionById(userId, id, executor = query) {
   return rows[0] ? mapTransaction(rows[0]) : null;
 }
 
+/**
+ * Tạo giao dịch mới và cập nhật số dư ví trong cùng một transaction DB.
+ * withTransaction đảm bảo nếu insert thành công nhưng adjustWalletBalance thất bại,
+ * toàn bộ sẽ rollback — tránh giao dịch "ma" không ảnh hưởng số dư.
+ */
 export async function createTransaction(userId, payload) {
+  // Ưu tiên ID từ client để hỗ trợ đồng bộ offline-first
   const id = payload.id ?? randomUUID();
   const createdAt = toMysqlDateTime(payload.createdAt ?? new Date());
   const transaction = {
@@ -165,12 +193,18 @@ export async function createTransaction(userId, payload) {
       }
     );
 
+    // Áp dụng ảnh hưởng lên số dư ví ngay sau khi insert thành công
     await applyTransactionEffect(connection, userId, transaction, 1);
   });
 
   return getTransactionById(userId, id);
 }
 
+/**
+ * Cập nhật giao dịch theo chiến lược: hoàn tác ảnh hưởng cũ → ghi mới → áp dụng ảnh hưởng mới.
+ * Tất cả trong một transaction DB để đảm bảo số dư ví luôn nhất quán.
+ * normalizeFullPayload được gọi trên dữ liệu đã merge để đảm bảo validation đầy đủ.
+ */
 export async function updateTransaction(userId, id, payload, normalizeFullPayload) {
   return withTransaction(async (connection) => {
     const current = await getTransactionById(userId, id, connection);
@@ -179,9 +213,12 @@ export async function updateTransaction(userId, id, payload, normalizeFullPayloa
       throw new HttpError(404, 'Transaction not found.');
     }
 
+    // Merge dữ liệu cũ với payload rồi normalize toàn bộ để đảm bảo hợp lệ
     const nextTransaction = normalizeFullPayload({ ...current, ...payload });
     const mysqlTransactionDate = toMysqlDateTime(nextTransaction.date);
     await assertTransactionWallets(connection, userId, nextTransaction);
+
+    // Revert số dư cũ trước, rồi áp dụng số dư mới — đảm bảo wallet balance luôn chính xác
     await applyTransactionEffect(connection, userId, current, -1);
 
     await execute(
@@ -217,6 +254,10 @@ export async function updateTransaction(userId, id, payload, normalizeFullPayloa
   });
 }
 
+/**
+ * Xóa giao dịch và hoàn tác ảnh hưởng lên số dư ví trong cùng một transaction DB.
+ * Thứ tự: revert balance trước, xóa record sau — nếu xóa thất bại thì balance cũng rollback.
+ */
 export async function deleteTransaction(userId, id) {
   await withTransaction(async (connection) => {
     const transaction = await getTransactionById(userId, id, connection);

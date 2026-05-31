@@ -21,6 +21,8 @@ export default function TaxCalculatorScreen() {
   const [grossInput, setGrossInput] = useState('');
   const [dependentsInput, setDependentsInput] = useState('0');
 
+  // Tính thuế TNCN tự động mỗi khi thu nhập hoặc số người phụ thuộc thay đổi
+  // replace(/[^0-9]/g, '') loại bỏ dấu phẩy định dạng trước khi parse
   const {
     inputIncome,
     personalDeduction,
@@ -59,6 +61,7 @@ export default function TaxCalculatorScreen() {
                 <View style={softInputStyles.inputIcon}>
                   <Ionicons name="cash-outline" size={18} color={SoftColors.muted} />
                 </View>
+                {/* Hiển thị số có định dạng dấu phẩy, nhưng lưu raw string để parse chính xác */}
                 <TextInput
                   value={grossInput ? formatNumber(parseInt(grossInput.replace(/[^0-9]/g, ''), 10)) : ''}
                   onChangeText={setGrossInput}
@@ -90,7 +93,7 @@ export default function TaxCalculatorScreen() {
             </View>
           </View>
 
-          {/* Result Card */}
+          {/* Chỉ hiển thị kết quả khi đã nhập thu nhập — tránh hiện card rỗng */}
           {inputIncome > 0 && (
             <SoftCard style={styles.resultCard}>
               <Text style={styles.resultHeading}>Thu nhập sau thuế</Text>
@@ -132,6 +135,7 @@ export default function TaxCalculatorScreen() {
                   <Text style={[styles.detailValueBold, { color: '#FF6B78' }]}>
                     - {formatCurrency(taxAmount)}
                   </Text>
+                  {/* Hiển thị bậc thuế áp dụng (vd: "Bậc 3: 15%") khi có thuế phải nộp */}
                   {taxAmount > 0 && bracketText !== '' && (
                     <Text style={{ fontSize: 11, color: SoftColors.muted, marginTop: 4, textAlign: 'right' }}>
                       ({bracketText})

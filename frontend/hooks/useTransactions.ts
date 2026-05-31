@@ -15,6 +15,7 @@ export function useMonthTransactions(year: number, month: number, walletId?: str
       const isCorrectPeriod = d.getFullYear() === year && d.getMonth() === month;
       if (!isCorrectPeriod) return false;
 
+      // Nếu có walletId, chỉ lấy giao dịch liên quan đến ví đó (kể cả ví đích của transfer)
       if (walletId) {
         return t.walletId === walletId || t.toWalletId === walletId;
       }
@@ -22,12 +23,14 @@ export function useMonthTransactions(year: number, month: number, walletId?: str
     });
 
     // 2. Tính toán thu nhập, chi tiêu, và phân tích danh mục trong một lần duyệt duy nhất
+    // Dùng single-pass loop để duy trì O(n) thay vì gọi nhiều filter/reduce riêng biệt
     let income = 0;
     let expense = 0;
     const categoryMap: Record<string, { category: any; amount: number; count: number }> = {};
 
     for (const t of filtered) {
       // Xác định giao dịch là thu nhập hay chi tiêu đối với ngữ cảnh hiện tại
+      // Transfer đến ví này → coi là thu nhập; Transfer từ ví này → coi là chi tiêu
       const isIncomeTransaction = t.type === 'income' || (walletId && t.type === 'transfer' && t.toWalletId === walletId);
       const isExpenseTransaction = t.type === 'expense' || (walletId && t.type === 'transfer' && t.walletId === walletId);
 
@@ -75,7 +78,9 @@ export function useWalletStats(walletId: string) {
     let monthIncome = 0;
     let monthExpense = 0;
 
+    // Duyệt một lần để tính đồng thời tổng giao dịch và thu/chi tháng hiện tại
     for (const t of transactions) {
+      // Bỏ qua giao dịch không liên quan đến ví (bao gồm cả ví nguồn và ví đích)
       const isRelatedToWallet = t.walletId === walletId || t.toWalletId === walletId;
       if (!isRelatedToWallet) continue;
 
@@ -83,6 +88,7 @@ export function useWalletStats(walletId: string) {
 
       const d = new Date(t.date);
       if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+        // Transfer đến ví này → thu nhập; Transfer từ ví này → chi tiêu
         if (t.type === 'income' || (t.type === 'transfer' && t.toWalletId === walletId)) {
           monthIncome += t.amount;
         } else if (t.type === 'expense' || (t.type === 'transfer' && t.walletId === walletId)) {

@@ -18,8 +18,10 @@ import { GlowButton, SoftBackdrop, SoftCard, softInputStyles } from '@/component
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
+  // sent: flag hiển thị thông báo thành công sau khi nhấn gửi — tránh dùng navigation để UX mượt hơn
   const [sent, setSent] = useState(false);
 
+  // Tính năng reset mật khẩu chưa tích hợp backend — hiện chỉ thông báo và đánh dấu đã gửi
   const handleSend = () => {
     SoftAlert.alert("Tính năng đang phát triển", "Vui lòng liên hệ quản trị viên để được hỗ trợ.");
     setSent(true);
@@ -29,11 +31,13 @@ export default function ForgotPasswordScreen() {
     <View style={styles.container}>
       <SoftBackdrop />
       <SafeAreaView style={styles.safeArea}>
+        {/* KeyboardAvoidingView: chỉ dùng 'padding' trên iOS; Android tự xử lý */}
         <KeyboardAvoidingView
           style={styles.keyboard}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            {/* Nút back dùng router.back() thay vì Link để tránh tạo thêm entry trong navigation stack */}
             <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8} style={styles.backButton}>
               <Ionicons name="arrow-back" size={22} color={SoftColors.text} />
             </TouchableOpacity>
@@ -63,6 +67,7 @@ export default function ForgotPasswordScreen() {
 
               <GlowButton label="Gửi liên kết reset" onPress={handleSend} style={styles.primaryButton} />
 
+              {/* Thông báo xác nhận chỉ xuất hiện sau khi nhấn gửi — inline thay vì toast để persist */}
               {sent ? (
                 <View style={styles.successCard}>
                   <View style={styles.successIcon}>

@@ -27,6 +27,7 @@ export default function AddWalletScreen() {
   const [selectedIcon] = useState(WALLET_ICONS[0]);
   const [includeInTotal, setIncludeInTotal] = useState(true);
 
+  // Loại bỏ ký tự không phải số — số dư lưu dạng INTEGER, không có thập phân
   const handleBalanceChange = (text: string) => {
     setBalance(text.replace(/[^0-9]/g, ''));
   };
@@ -70,6 +71,7 @@ export default function AddWalletScreen() {
             <View style={styles.headerSpacer} />
           </View>
 
+          {/* Preview card hiển thị trực tiếp theo màu và nội dung người dùng đang nhập */}
           <LinearGradient colors={[selectedColor, `${selectedColor}CC`]} style={styles.previewCard}>
             <View style={styles.previewTop}>
               <View style={styles.previewIconWrap}>
@@ -136,6 +138,7 @@ export default function AddWalletScreen() {
             </View>
           </SoftCard>
 
+          {/* Toggle "Tính vào tổng số dư" — ví tiết kiệm hay đầu tư có thể không muốn đưa vào tổng */}
           <SoftCard style={styles.toggleCard}>
             <View style={styles.toggleTextWrap}>
               <Text style={styles.toggleTitle}>Tính vào tổng số dư</Text>

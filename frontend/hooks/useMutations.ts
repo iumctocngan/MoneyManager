@@ -7,6 +7,7 @@ import { Transaction } from '@/constants/types';
  * cung cấp trạng thái đang tải (isMutating) khi có request bất đồng bộ đang chạy.
  */
 export function useMutations() {
+  // Dùng counter thay vì boolean để xử lý đúng khi có nhiều mutation song song
   const [pendingCount, setPendingCount] = useState(0);
 
   // Lấy các mutation hành động trực tiếp từ Zustand store
@@ -24,16 +25,18 @@ export function useMutations() {
   } = useStore();
 
   // Hàm helper dùng để bọc các hành động bất đồng bộ và quản lý trạng thái loading (pendingCount)
+  // Dùng finally để đảm bảo pendingCount luôn được giảm dù action có throw lỗi
   const run = useCallback(async <T,>(action: () => Promise<T>): Promise<T> => {
     setPendingCount((count) => count + 1);
     try {
       return await action();
     } finally {
+      // Math.max(..., 0) đề phòng counter bị âm trong edge case
       setPendingCount((count) => Math.max(count - 1, 0));
     }
   }, []);
 
-  // Hàm chuyển tiền giữa hai ví
+  // Hàm chuyển tiền giữa hai ví — tạo transaction type 'transfer' với id duy nhất
   const transferMoney = useCallback((
     fromWalletId: string,
     toWalletId: string,
@@ -59,6 +62,7 @@ export function useMutations() {
 
   // Trả về một object đã được memoize để tránh gây re-render không cần thiết cho component gọi hook
   return useMemo(() => ({
+    // true khi có ít nhất một action đang chờ hoàn thành
     isMutating: pendingCount > 0,
     
     // Quản lý giao dịch
