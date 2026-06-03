@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SoftAlert } from '@/components/ui/SoftAlert';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useStore } from '@/store/app-store';
-import { useMutations } from '@/hooks/useMutations';
+
 import { Colors , SoftColors, shadow } from '@/constants/design';
 
 import { GlowButton, SoftBackdrop, SoftCard } from '@/components/ui/soft';
@@ -14,7 +14,7 @@ import { getCategoryIconName } from '@/utils/iconography';
 
 export default function BudgetScreen() {
   const { budgets, transactions, getCategoryById } = useStore();
-  const { deleteBudget } = useMutations();
+
 
   // Tính toán tiến độ chi tiêu cho từng ngân sách — memo để tránh recompute khi re-render không liên quan
   const budgetsWithProgress = useMemo(
@@ -64,31 +64,7 @@ export default function BudgetScreen() {
   // Clamp tối đa 100% để thanh tổng không tràn ra ngoài track
   const totalProgress = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
 
-  // Thực hiện xóa sau khi người dùng xác nhận — lỗi hiển thị qua SoftAlert
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteBudget(id);
-    } catch (error) {
-      SoftAlert.alert(
-        'Không thể xoá ngân sách',
-        error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
-      );
-    }
-  };
 
-  // Hiện dialog xác nhận trước khi xóa để tránh thao tác nhầm
-  const confirmDelete = (id: string) => {
-    SoftAlert.alert('Xoá ngân sách', 'Bạn có chắc muốn xoá ngân sách này?', [
-      { text: 'Huỷ', style: 'cancel' },
-      {
-        text: 'Xoá',
-        style: 'destructive',
-        onPress: () => {
-          void handleDelete(id);
-        },
-      },
-    ]);
-  };
 
   return (
     <View style={styles.root}>
@@ -161,92 +137,76 @@ export default function BudgetScreen() {
               const iconName = getCategoryIconName(category?.id);
 
               return (
-                <SoftCard key={budget.id} style={styles.budgetCard}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderLeft}>
-                      <View style={[styles.categoryIcon, { backgroundColor: `${category?.color || SoftColors.primary}22` }]}>
-                        <Ionicons name={iconName} size={18} color={category?.color || SoftColors.primaryDark} />
+                <TouchableOpacity
+                  key={budget.id}
+                  activeOpacity={0.8}
+                  onPress={() => router.push({ pathname: '/budget/[id]', params: { id: budget.id } })}
+                >
+                  <SoftCard style={styles.budgetCard}>
+                    <View style={styles.cardHeader}>
+                      <View style={styles.cardHeaderLeft}>
+                        <View style={[styles.categoryIcon, { backgroundColor: `${category?.color || SoftColors.primary}22` }]}>
+                          <Ionicons name={iconName} size={18} color={category?.color || SoftColors.primaryDark} />
+                        </View>
+                        <View>
+                          <Text style={styles.categoryName}>{category?.name || 'Khác'}</Text>
+                          <Text style={styles.categorySpent}>Đã chi: {formatCurrency(budget.spent)}</Text>
+                          {/* Hiển thị cảnh báo màu vàng khi còn ≤ 3 ngày */}
+                          <Text
+                            style={[
+                              styles.daysLeftText,
+                              {
+                                color:
+                                  budget.daysLeft >= 0 && budget.daysLeft <= 3
+                                    ? Colors.warning
+                                    : SoftColors.muted,
+                                marginTop: 4,
+                              },
+                            ]}
+                          >
+                            {budget.daysLeft > 0
+                              ? `Thời hạn: Còn ${budget.daysLeft} ngày`
+                              : budget.daysLeft === 0
+                                ? 'Thời hạn: Hôm nay hết hạn'
+                                : 'Thời hạn: Đã kết thúc'}
+                          </Text>
+                        </View>
                       </View>
-                      <View>
-                        <Text style={styles.categoryName}>{category?.name || 'Khác'}</Text>
-                        <Text style={styles.categorySpent}>Đã chi: {formatCurrency(budget.spent)}</Text>
-                        {/* Hiển thị cảnh báo màu vàng khi còn ≤ 3 ngày */}
+                      <View style={styles.cardHeaderRight}>
+                        <Text style={styles.categoryBudget}>{formatCurrency(budget.amount)}</Text>
+                        {/* Hiển thị số tiền vượt hoặc còn lại tùy trạng thái */}
                         <Text
                           style={[
-                            styles.daysLeftText,
-                            {
-                              color:
-                                budget.daysLeft >= 0 && budget.daysLeft <= 3
-                                  ? Colors.warning
-                                  : SoftColors.muted,
-                              marginTop: 4,
-                            },
+                            styles.categoryRemaining,
+                            { color: isOverBudget ? Colors.expense : SoftColors.text },
                           ]}
                         >
-                          {budget.daysLeft > 0
-                            ? `Thời hạn: Còn ${budget.daysLeft} ngày`
-                            : budget.daysLeft === 0
-                              ? 'Thời hạn: Hôm nay hết hạn'
-                              : 'Thời hạn: Đã kết thúc'}
+                          {isOverBudget
+                            ? `Vượt ${formatCurrency(Math.abs(budget.remaining))}`
+                            : `Còn lại ${formatCurrency(budget.remaining)}`}
                         </Text>
                       </View>
                     </View>
-                    <View style={styles.cardHeaderRight}>
-                      <Text style={styles.categoryBudget}>{formatCurrency(budget.amount)}</Text>
-                      {/* Hiển thị số tiền vượt hoặc còn lại tùy trạng thái */}
-                      <Text
+
+                    {/* Thanh tiến độ: clamp tối đa 100% width để không tràn track */}
+                    <View style={styles.budgetTrack}>
+                      <View
                         style={[
-                          styles.categoryRemaining,
-                          { color: isOverBudget ? Colors.expense : SoftColors.text },
+                          styles.budgetFill,
+                          {
+                            width: `${Math.min(budget.pct, 100)}%`,
+                            backgroundColor: barColor,
+                          },
                         ]}
                       >
-                        {isOverBudget
-                          ? `Vượt ${formatCurrency(Math.abs(budget.remaining))}`
-                          : `Còn lại ${formatCurrency(budget.remaining)}`}
-                      </Text>
+                        {/* Hiển thị ">100%" khi vượt để phân biệt với trường hợp đúng 100% */}
+                        <Text style={styles.budgetFillText}>
+                          {budget.pct > 100 ? '>100%' : `${Math.round(budget.pct)}%`}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-
-                  {/* Thanh tiến độ: clamp tối đa 100% width để không tràn track */}
-                  <View style={styles.budgetTrack}>
-                    <View
-                      style={[
-                        styles.budgetFill,
-                        {
-                          width: `${Math.min(budget.pct, 100)}%`,
-                          backgroundColor: barColor,
-                        },
-                      ]}
-                    >
-                      {/* Hiển thị ">100%" khi vượt để phân biệt với trường hợp đúng 100% */}
-                      <Text style={styles.budgetFillText}>
-                        {budget.pct > 100 ? '>100%' : `${Math.round(budget.pct)}%`}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.actionsRow}>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/budget/edit',
-                          params: { id: budget.id },
-                        } as any)
-                      }
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="create-outline" size={16} color={SoftColors.muted} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => confirmDelete(budget.id)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="trash-outline" size={16} color={SoftColors.muted} />
-                    </TouchableOpacity>
-                  </View>
-                </SoftCard>
+                  </SoftCard>
+                </TouchableOpacity>
               );
             })
           )}

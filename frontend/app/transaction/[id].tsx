@@ -76,9 +76,14 @@ export default function TransactionDetailScreen() {
               <Ionicons name="arrow-back" size={22} color={SoftColors.text} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Chi tiết giao dịch</Text>
-            <TouchableOpacity activeOpacity={0.82} onPress={confirmDelete} style={styles.headerIcon}>
-              <Ionicons name="trash-outline" size={20} color={SoftColors.text} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity activeOpacity={0.82} onPress={() => router.push({ pathname: '/transaction/add', params: { id: transaction.id } })} style={styles.headerIcon}>
+                <Ionicons name="pencil-outline" size={20} color={SoftColors.text} />
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.82} onPress={confirmDelete} style={styles.headerIcon}>
+                <Ionicons name="trash-outline" size={20} color={SoftColors.text} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <LinearGradient colors={[typeColor, `${typeColor}CC`]} style={styles.heroCard}>

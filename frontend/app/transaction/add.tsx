@@ -12,7 +12,7 @@ import {
 import { SoftAlert } from '@/components/ui/SoftAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useStore } from '@/store/app-store';
 import { useMutations } from '@/hooks/useMutations';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants';
@@ -24,14 +24,19 @@ import { getCategoryIconName, getWalletIconName } from '@/utils/iconography';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function AddTransactionScreen() {
-  const { wallets } = useStore();
-  const { addTransaction } = useMutations();
-  const [type, setType] = useState<TransactionType>('expense');
-  const [amount, setAmount] = useState('');
-  const [note, setNote] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedWallet, setSelectedWallet] = useState(wallets[0]?.id || '');
-  const [date, setDate] = useState(new Date());
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { wallets, transactions } = useStore();
+  const { addTransaction, updateTransaction } = useMutations();
+  
+  const transactionToEdit = id ? transactions.find(t => t.id === id) : null;
+  const isEditMode = !!transactionToEdit;
+
+  const [type, setType] = useState<TransactionType>(transactionToEdit?.type || 'expense');
+  const [amount, setAmount] = useState(transactionToEdit ? transactionToEdit.amount.toString() : '');
+  const [note, setNote] = useState(transactionToEdit?.note || '');
+  const [selectedCategory, setSelectedCategory] = useState(transactionToEdit?.categoryId || '');
+  const [selectedWallet, setSelectedWallet] = useState(transactionToEdit?.walletId || wallets[0]?.id || '');
+  const [date, setDate] = useState(transactionToEdit ? new Date(transactionToEdit.date) : new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
@@ -59,20 +64,31 @@ export default function AddTransactionScreen() {
     }
 
     try {
-      await addTransaction({
-        id: generateId(),
-        type,
-        amount: parseInt(amount, 10),
-        categoryId: selectedCategory,
-        walletId: selectedWallet,
-        note,
-        date: date.toISOString(),
-        createdAt: new Date().toISOString(),
-      });
+      if (isEditMode && transactionToEdit) {
+        await updateTransaction(transactionToEdit.id, {
+          type,
+          amount: parseInt(amount, 10),
+          categoryId: selectedCategory,
+          walletId: selectedWallet,
+          note,
+          date: date.toISOString(),
+        });
+      } else {
+        await addTransaction({
+          id: generateId(),
+          type,
+          amount: parseInt(amount, 10),
+          categoryId: selectedCategory,
+          walletId: selectedWallet,
+          note,
+          date: date.toISOString(),
+          createdAt: new Date().toISOString(),
+        });
+      }
       router.back();
     } catch (error) {
       SoftAlert.alert(
-        'Không thể tạo giao dịch',
+        isEditMode ? 'Không thể cập nhật giao dịch' : 'Không thể tạo giao dịch',
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
       );
     }
@@ -88,7 +104,7 @@ export default function AddTransactionScreen() {
               <TouchableOpacity activeOpacity={0.82} onPress={() => router.back()} style={styles.headerIcon}>
                 <Ionicons name="close" size={24} color={SoftColors.text} />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Thêm giao dịch</Text>
+              <Text style={styles.headerTitle}>{isEditMode ? 'Sửa giao dịch' : 'Thêm giao dịch'}</Text>
               <View style={styles.headerSpacer} />
             </View>
 
@@ -216,28 +232,30 @@ export default function AddTransactionScreen() {
               })}
             </View>
 
-            <GlowButton label="Lưu giao dịch" onPress={() => void handleSave()} style={styles.saveButton} />
+            <GlowButton label={isEditMode ? 'Cập nhật' : 'Lưu giao dịch'} onPress={() => void handleSave()} style={styles.saveButton} />
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
 
-      {/* FAB phụ — lối tắt nhanh sang nhập bằng giọng nói hoặc quét hóa đơn */}
-      <View style={styles.floatingActionGroup}>
-        <TouchableOpacity 
-          style={styles.fabActionButton} 
-          activeOpacity={0.85}
-          onPress={() => router.push('/ai-voice')}
-        >
-          <Ionicons name="mic" size={24} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.fabActionButton} 
-          activeOpacity={0.85}
-          onPress={() => router.push('/scan-receipt' as any)}
-        >
-          <Ionicons name="scan" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
+      {/* FAB phụ — lối tắt nhanh sang nhập bằng giọng nói hoặc quét hóa đơn (Chỉ hiện khi thêm mới) */}
+      {!isEditMode && (
+        <View style={styles.floatingActionGroup}>
+          <TouchableOpacity 
+            style={styles.fabActionButton} 
+            activeOpacity={0.85}
+            onPress={() => router.push('/ai-voice')}
+          >
+            <Ionicons name="mic" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.fabActionButton} 
+            activeOpacity={0.85}
+            onPress={() => router.push('/scan-receipt' as any)}
+          >
+            <Ionicons name="scan" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
