@@ -13,6 +13,9 @@ const router = Router();
 
 router.post('/register', asyncHandler(authController.register));
 router.post('/login', asyncHandler(authController.login));
+router.post('/forgot-password', asyncHandler(authController.forgotPassword));
+router.post('/verify-reset-otp', asyncHandler(authController.verifyResetOtp));
+router.post('/reset-password', asyncHandler(authController.resetPasswordController));
 // requireAuth middleware xác thực JWT và gán request.user trước khi vào controller
 router.get('/me', requireAuth, asyncHandler(authController.me));
 

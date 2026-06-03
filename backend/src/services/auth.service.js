@@ -4,6 +4,7 @@ import { HttpError } from '../utils/http-error.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { mapUser } from '../utils/serializers.js';
 import { createAccessToken } from '../utils/token.js';
+import { sendResetPasswordEmail } from './email.service.js';
 
 // Các cột trả về khi query user — loại trừ password_hash để tránh rò rỉ dữ liệu nhạy cảm
 const USER_SELECT = `
@@ -145,3 +146,93 @@ export async function loginUser(payload) {
   const user = await getUserById(userRow.id);
   return buildAuthResponse(user);
 }
+
+/**
+ * Yêu cầu đặt lại mật khẩu: Sinh mã OTP ngẫu nhiên, lưu vào DB và gửi email.
+ */
+export async function requestPasswordReset(email) {
+  const normalizedEmail = email.toLowerCase();
+  const userRow = await getUserRowByEmail(normalizedEmail);
+
+  if (!userRow) {
+    // Để bảo mật, không báo lỗi nếu email không tồn tại, cứ trả về thành công ảo
+    return { success: true };
+  }
+
+  // Sinh mã OTP 6 số ngẫu nhiên
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // OTP hết hạn sau 15 phút
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+  // Lưu OTP vào DB
+  await query(
+    `
+      UPDATE users
+      SET reset_password_otp = :otp,
+          reset_password_expires = :expiresAt
+      WHERE id = :id
+    `,
+    { otp, expiresAt, id: userRow.id }
+  );
+
+  // Gửi email
+  await sendResetPasswordEmail(normalizedEmail, otp);
+
+  return { success: true };
+}
+
+/**
+ * Xác minh mã OTP xem có hợp lệ và còn hạn không.
+ */
+export async function verifyPasswordResetOtp(email, otp) {
+  const normalizedEmail = email.toLowerCase();
+
+  const rows = await query(
+    `
+      SELECT id, reset_password_otp, reset_password_expires
+      FROM users
+      WHERE email = :email
+      LIMIT 1
+    `,
+    { email: normalizedEmail }
+  );
+
+  const userRow = rows[0];
+
+  if (!userRow || userRow.reset_password_otp !== otp) {
+    throw new HttpError(400, 'Mã xác nhận không hợp lệ.');
+  }
+
+  if (new Date() > new Date(userRow.reset_password_expires)) {
+    throw new HttpError(400, 'Mã xác nhận đã hết hạn.');
+  }
+
+  return { success: true };
+}
+
+/**
+ * Đặt lại mật khẩu mới nếu OTP hợp lệ.
+ */
+export async function resetPassword(email, otp, newPassword) {
+  const normalizedEmail = email.toLowerCase();
+
+  // Xác minh lại OTP trước khi đổi mật khẩu để đảm bảo an toàn
+  await verifyPasswordResetOtp(normalizedEmail, otp);
+
+  const passwordHash = await hashPassword(newPassword);
+
+  // Cập nhật mật khẩu và xóa OTP
+  await query(
+    `
+      UPDATE users
+      SET password_hash = :passwordHash,
+          reset_password_otp = NULL,
+          reset_password_expires = NULL
+      WHERE email = :email
+    `,
+    { passwordHash, email: normalizedEmail }
+  );
+
+  return { success: true };
+}
+

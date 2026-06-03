@@ -1,6 +1,6 @@
 import { sendSuccess } from '../utils/response.js';
 import { normalizeRegisterPayload, normalizeLoginPayload } from '../utils/validators.js';
-import { registerUser, loginUser } from '../services/auth.service.js';
+import { registerUser, loginUser, requestPasswordReset, verifyPasswordResetOtp, resetPassword } from '../services/auth.service.js';
 
 /**
  * POST /auth/register — Đăng ký tài khoản mới.
@@ -28,3 +28,40 @@ export const login = async (request, response) => {
 export const me = async (request, response) => {
   sendSuccess(response, { user: request.user });
 };
+
+/**
+ * POST /auth/forgot-password
+ */
+export const forgotPassword = async (request, response) => {
+  const { email } = request.body;
+  if (!email) {
+    return sendSuccess(response, { success: true }); // Giả vờ thành công nếu ko có email để chống dò tìm
+  }
+  const result = await requestPasswordReset(email);
+  sendSuccess(response, result);
+};
+
+/**
+ * POST /auth/verify-reset-otp
+ */
+export const verifyResetOtp = async (request, response) => {
+  const { email, otp } = request.body;
+  if (!email || !otp) {
+    throw new Error('Email và mã xác nhận là bắt buộc.');
+  }
+  const result = await verifyPasswordResetOtp(email, otp);
+  sendSuccess(response, result);
+};
+
+/**
+ * POST /auth/reset-password
+ */
+export const resetPasswordController = async (request, response) => {
+  const { email, otp, newPassword } = request.body;
+  if (!email || !otp || !newPassword) {
+    throw new Error('Vui lòng điền đầy đủ thông tin.');
+  }
+  const result = await resetPassword(email, otp, newPassword);
+  sendSuccess(response, result);
+};
+

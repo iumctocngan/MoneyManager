@@ -55,4 +55,10 @@ export const env = {
     geminiKey: getString('GEMINI_API_KEY'),
     groqKey: getString('GROQ_API_KEY'),
   },
+  email: {
+    host: getString('SMTP_HOST', 'smtp.gmail.com'),
+    port: getNumber('SMTP_PORT', 465),
+    user: getString('SMTP_USER', 'your-email@gmail.com'),
+    pass: getString('SMTP_PASS', 'your-app-password'),
+  },
 };

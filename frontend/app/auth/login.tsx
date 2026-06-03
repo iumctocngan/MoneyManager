@@ -14,7 +14,7 @@ import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '@/store/app-store';
-import { Colors , SoftColors, shadow } from '@/constants/design';
+import { SoftColors, shadow } from '@/constants/design';
 
 import { GlowButton, SoftBackdrop, SoftCard, softInputStyles } from '@/components/ui/soft';
 
@@ -102,26 +102,7 @@ export default function LoginScreen() {
               </Link>
             </SoftCard>
 
-            {/* Đăng nhập mạng xã hội — hiện chỉ là placeholder, chưa tích hợp OAuth */}
-            <View style={styles.socialWrap}>
-              <Text style={styles.socialLabel}>Hoặc đăng nhập bằng</Text>
-              <View style={styles.socialRow}>
-                <TouchableOpacity 
-                  activeOpacity={0.82} 
-                  style={styles.socialButton}
-                  onPress={() => SoftAlert.alert("Tính năng đang phát triển", "Vui lòng đăng nhập bằng email.")}
-                >
-                  <Ionicons name="logo-google" size={22} color="#4285F4" />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  activeOpacity={0.82} 
-                  style={styles.socialButton}
-                  onPress={() => SoftAlert.alert("Tính năng đang phát triển", "Vui lòng đăng nhập bằng email.")}
-                >
-                  <Ionicons name="logo-apple" size={22} color={Colors.text} />
-                </TouchableOpacity>
-              </View>
-            </View>
+
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -240,26 +221,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-  socialWrap: {
-    marginTop: 28,
-    alignItems: 'center',
-  },
-  socialLabel: {
-    fontSize: 14,
-    color: SoftColors.text,
-    marginBottom: 14,
-  },
-  socialRow: {
-    flexDirection: 'row',
-    gap: 14,
-  },
-  socialButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: 'rgba(255,255,255,0.84)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadow.card,
-  },
 });
+

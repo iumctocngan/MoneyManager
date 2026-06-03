@@ -201,6 +201,24 @@ export const api = {
       body,
     });
   },
+  forgotPassword(body: { email: string }) {
+    return request<any>('/api/auth/forgot-password', {
+      method: 'POST',
+      body,
+    });
+  },
+  verifyResetOtp(body: { email: string; otp: string }) {
+    return request<any>('/api/auth/verify-reset-otp', {
+      method: 'POST',
+      body,
+    });
+  },
+  resetPassword(body: { email: string; otp: string; newPassword: string }) {
+    return request<any>('/api/auth/reset-password', {
+      method: 'POST',
+      body,
+    });
+  },
   me(token: string) {
     return request<{ user: AuthUser }>('/api/auth/me', { token });
   },
